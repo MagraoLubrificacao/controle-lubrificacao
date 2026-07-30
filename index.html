@@ -9,7 +9,7 @@
     <!-- Importando os SDKs do Firebase (Modular) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         // ==========================================
@@ -21,7 +21,7 @@
             projectId: "SEU_PROJETO_ID",
             storageBucket: "SEU_PROJETO.appspot.com",
             messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-            appId: "SEU_APP_ID"
+            appId: "SUA_APP_ID"
         };
 
         // Inicializar Firebase
@@ -35,8 +35,6 @@
         window.colRef = collection(db, "registros_lubrificacao");
         
         // Iniciar escuta em tempo real do banco de dados
-        import { query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        
         onSnapshot(query(window.colRef), (snapshot) => {
             window.registrosGlobais = [];
             snapshot.forEach((docSnap) => {
@@ -687,14 +685,12 @@
 
 <script type="module">
     import { addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     window.registrosGlobais = [];
     const hoje = new Date();
     document.getElementById('dataServico').valueAsDate = hoje;
 
-    let chartBarras = null;
-    let chartPizza = null;
     let comprovanteRemovidoNaEdicao = false;
 
     function inicializarSeletoresPeriodo() {
@@ -729,7 +725,7 @@
     }
     window.atualizarCamposPrazo();
 
-    // SALVAR NO FIREBASE (BANCO E NUvem)
+    // SALVAR NO FIREBASE (BANCO E NUVEM)
     window.salvarRegistroFirebase = async function(event) {
         event.preventDefault();
         const btnSalvar = document.getElementById('btnSalvar');
@@ -765,7 +761,6 @@
             let comprovanteUrl = "";
             let comprovanteNome = "";
 
-            // Se enviou um arquivo novo, faz upload pro Firebase Storage
             if (comprovanteInput.files.length > 0) {
                 const file = comprovanteInput.files[0];
                 const storageRef = ref(window.storage, 'comprovantes/' + Date.now() + '_' + file.name);
@@ -864,8 +859,12 @@
         }
     }
 
+    window.filtrarPastasEEstados = function() {
+        window.renderizarTabelaCompleta();
+    }
+
     window.renderizarTabelaCompleta = function() {
-        const dados = window.registrosGlobais;
+        const dados = window.registrosGlobais || [];
         const corpo = document.getElementById('tabelaCorpo');
         corpo.innerHTML = '';
 
@@ -887,20 +886,19 @@
                 const dataReg = new Date(parts[0], parts[1] - 1, parts[2]);
                 if (dataReg.getMonth() === mesSelecionado && dataReg.getFullYear() === anoSelecionado) {
                     qtdServicosMesSelecionado++;
-                    if (reg.statusPagamento === 'Pago') lucroMesSelecionado += parseFloat(reg.valor);
+                    if (reg.statusPagamento === 'Pago') lucroMesSelecionado += parseFloat(reg.valor || 0);
                 }
             }
-            if (reg.statusPagamento === 'Pendente') totalPendenteGeral += parseFloat(reg.valor);
+            if (reg.statusPagamento === 'Pendente') totalPendenteGeral += parseFloat(reg.valor || 0);
         });
 
-        // Aplicar filtros visuais da tela
         const filterEmp = document.getElementById('filterEmpresa').value.toLowerCase();
         const filterPlac = document.getElementById('filterPlaca').value.toLowerCase();
         const filterStatus = document.getElementById('filterStatus').value;
 
         const dadosParaExibir = dados.filter(reg => {
-            const bateEmpresa = reg.empresa.toLowerCase().includes(filterEmp);
-            const batePlaca = reg.placa.toLowerCase().includes(filterPlac);
+            const bateEmpresa = (reg.empresa || '').toLowerCase().includes(filterEmp);
+            const batePlaca = (reg.placa || '').toLowerCase().includes(filterPlac);
             const bateStatus = filterStatus === "TODOS" || reg.statusPagamento === filterStatus;
             return bateEmpresa && batePlaca && bateStatus;
         });
@@ -978,12 +976,11 @@
         const listaVencidos = document.getElementById('listaVencidos');
         const listaUrgentes = document.getElementById('listaUrgentes');
 
-        // Função auxiliar para gerar link direto para o Google Calendar
         function linkGoogleCalendar(item) {
             const titulo = encodeURIComponent(`Vencimento ${item.tipo} - Placa ${item.placa} (${item.empresa})`);
             const detalhes = encodeURIComponent(`O serviço de ${item.tipo} do caminhão placa ${item.placa} da empresa ${item.empresa} venceu ou está próximo.`);
             const dataStr = item.data.replace(/-/g, '');
-            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalles}`;
+            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalhes}`;
         }
 
         if (vencidos.length === 0) {
