@@ -10,7 +10,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
         // ==========================================
         // 🔑 CREDENCIAIS DO FIREBASE (CONFIGURADAS)
@@ -28,11 +27,9 @@
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const storage = getStorage(app);
 
         // Disponibilizar globais para as funções do formulário
         window.db = db;
-        window.storage = storage;
         window.colRef = collection(db, "registros_lubrificacao");
         
         // Iniciar escuta em tempo real do banco de dados
@@ -686,7 +683,6 @@
 
 <script type="module">
     import { addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     window.registrosGlobais = [];
     const hoje = new Date();
@@ -726,7 +722,7 @@
     }
     window.atualizarCamposPrazo();
 
-    // SALVAR NO FIREBASE (BANCO E NUVEM)
+    // SALVAR REGISTRO (BANCO FIRESTORE + CLOUDINARY PARA ARQUIVOS)
     window.salvarRegistroFirebase = async function(event) {
         event.preventDefault();
         const btnSalvar = document.getElementById('btnSalvar');
@@ -762,13 +758,27 @@
             let comprovanteUrl = "";
             let comprovanteNome = "";
 
+            // UPLOAD PARA O CLOUDINARY (SEM CARTÃO DE CRÉDITO)
             if (comprovanteInput.files.length > 0) {
                 const file = comprovanteInput.files[0];
-                const storageRef = ref(window.storage, 'comprovantes/' + Date.now() + '_' + file.name);
-                const snapshot = await uploadBytes(storageRef, file);
-                comprovanteUrl = await getDownloadURL(snapshot.ref);
-                comprovanteNome = file.name;
-                statusPagamento = 'Pago';
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', 'comprovantes');
+
+                const cloudResp = await fetch('https://api.cloudinary.com/v1_1/oxani7r3/auto/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const cloudData = await cloudResp.json();
+
+                if (cloudData.secure_url) {
+                    comprovanteUrl = cloudData.secure_url;
+                    comprovanteNome = file.name;
+                    statusPagamento = 'Pago';
+                } else {
+                    throw new Error("Falha no upload do arquivo para o Cloudinary.");
+                }
             } else if (idEdicao && !comprovanteRemovidoNaEdicao) {
                 const antigo = window.registrosGlobais.find(r => r.idDoc === idEdicao);
                 if (antigo) {
