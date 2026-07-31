@@ -769,7 +769,7 @@
                 const file = comprovanteInput.files[0];
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('upload_preset', 'ml_default');
+                formData.append('upload_preset', 'comprovantes');
 
                 const cloudResp = await fetch('https://api.cloudinary.com/v1_1/oxani7r3/auto/upload', {
                     method: 'POST',
