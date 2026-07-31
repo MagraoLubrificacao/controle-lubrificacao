@@ -672,7 +672,7 @@
             <thead>
                 <tr>
                     <th>Empresa</th><th>Placa</th><th>Motorista</th><th>Data</th><th>Tipo</th>
-                    <th>Descrição</th><th>Prox. Lub.</th><th>Prox. Óleo</th><th>Valor</th>
+                    <th>Descrição</th><th>Próx. Lub.</th><th>Próx. Óleo</th><th>Valor</th>
                     <th>Status</th><th>Comp.</th><th>Ações</th>
                 </tr>
             </thead>
@@ -749,8 +749,14 @@
 
             if (prazoDias !== null) {
                 const proxDataObj = new Date(dataOriginal);
-                proxDataObj.setDate(dataOriginal.getDate() + prazoDias);
-                const dataIsoCalculada = proxDataObj.toISOString().split('T')[0];
+                proxDataObj.setDate(proxDataObj.getDate() + prazoDias);
+                
+                // Formatação segura para evitar bug de fuso horário do toISOString()
+                const anoCalc = proxDataObj.getFullYear();
+                const mesCalc = String(proxDataObj.getMonth() + 1).padStart(2, '0');
+                const diaCalc = String(proxDataObj.getDate()).padStart(2, '0');
+                const dataIsoCalculada = `${anoCalc}-${mesCalc}-${diaCalc}`;
+                
                 if (tipoServico === 'Lubrificação' || tipoServico === 'Lubrificação + Troca de Óleo') proximaLubrificacao = dataIsoCalculada;
                 if (tipoServico === 'Troca de Óleo' || tipoServico === 'Lubrificação + Troca de Óleo') proximaTrocaOleo = dataIsoCalculada;
             }
@@ -880,7 +886,8 @@
         corpo.innerHTML = '';
 
         const dataHoje = new Date();
-        dataHoje.setHours(0,0,0,0);
+        // Lógica mais segura para garantir o "Hoje" na meia-noite sem fuso
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
 
         const mesSelecionado = parseInt(document.getElementById('selectMes').value);
         const anoSelecionado = parseInt(document.getElementById('selectAno').value);
@@ -921,8 +928,11 @@
             let alertaAtivo = false;
 
             if (reg.proximaLubrificacao) {
-                const dataLub = new Date(reg.proximaLubrificacao + 'T00:00:00');
-                diffLubDias = Math.ceil((dataLub - dataHoje) / (1000 * 60 * 60 * 24));
+                const [anoL, mesL, diaL] = reg.proximaLubrificacao.split('-');
+                const dataLub = new Date(anoL, mesL - 1, diaL);
+                // Math.round é mais seguro que Math.ceil para contagem exata de dias
+                diffLubDias = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
+                
                 if (diffLubDias < 0) {
                     vencidosList.push({ idDoc: reg.idDoc, placa: reg.placa, empresa: reg.empresa, tipo: 'Lubrificação', data: reg.proximaLubrificacao, dias: Math.abs(diffLubDias) });
                 } else if (diffLubDias >= 0 && diffLubDias <= 5) {
@@ -932,8 +942,10 @@
             }
 
             if (reg.proximaTrocaOleo) {
-                const dataOleo = new Date(reg.proximaTrocaOleo + 'T00:00:00');
-                diffOleoDias = Math.ceil((dataOleo - dataHoje) / (1000 * 60 * 60 * 24));
+                const [anoO, mesO, diaO] = reg.proximaTrocaOleo.split('-');
+                const dataOleo = new Date(anoO, mesO - 1, diaO);
+                diffOleoDias = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
+                
                 if (diffOleoDias < 0) {
                     vencidosList.push({ idDoc: reg.idDoc, placa: reg.placa, empresa: reg.empresa, tipo: 'Troca de Óleo', data: reg.proximaTrocaOleo, dias: Math.abs(diffOleoDias) });
                 } else if (diffOleoDias >= 0 && diffOleoDias <= 5) {
@@ -951,6 +963,17 @@
             const exibicaoProxLub = (diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
             const exibicaoProxOleo = (diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
 
+            // LÓGICA DO BOTÃO DA AGENDA NA TABELA
+            let dataAgenda = reg.proximaTrocaOleo || reg.proximaLubrificacao;
+            let btnAgendaHtml = '';
+            if (dataAgenda) {
+                const dataStr = dataAgenda.replace(/-/g, '');
+                const titulo = encodeURIComponent(`Revisão/Óleo - ${reg.placa} (${reg.empresa})`);
+                const detalhes = encodeURIComponent(`Fazer ${reg.tipoServico || 'serviço'} do caminhão placa ${reg.placa}.`);
+                const linkCal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalhes}`;
+                btnAgendaHtml = `<a href="${linkCal}" target="_blank" class="action-btn" title="Salvar no Google Agenda" style="text-decoration: none; font-size: 1rem;">📅</a>`;
+            }
+
             tr.innerHTML = `
                 <td data-label="Empresa" title="${reg.empresa}"><strong>${reg.empresa}</strong></td>
                 <td data-label="Placa">${reg.placa}</td>
@@ -958,8 +981,8 @@
                 <td data-label="Data">${dataServicoBR}</td>
                 <td data-label="Tipo">${reg.tipoServico || 'Lubrificação'}</td>
                 <td data-label="Descrição" class="col-descricao" title="${reg.descricao || ''}">${reg.descricao || '—'}</td>
-                <td data-label="Prox. Lub.">${exibicaoProxLub}</td>
-                <td data-label="Prox. Óleo">${exibicaoProxOleo}</td>
+                <td data-label="Próx. Lub.">${exibicaoProxLub}</td>
+                <td data-label="Próx. Óleo">${exibicaoProxOleo}</td>
                 <td data-label="Valor">R$ ${reg.valor}</td>
                 <td data-label="Status"><span class="badge ${reg.statusPagamento === 'Pago' ? 'badge-pago' : 'badge-pendente'}">${reg.statusPagamento}</span></td>
                 <td data-label="Comp.">
@@ -967,8 +990,9 @@
                 </td>
                 <td data-label="Ações">
                     <div class="flex-actions">
-                        <button class="action-btn btn-editar-acao" onclick="editarRegistro('${reg.idDoc}')" title="Editar">📝</button>
-                        <button class="action-btn btn-excluir-acao" onclick="excluirRegistro('${reg.idDoc}')" title="Excluir">🗑️</button>
+                        ${btnAgendaHtml}
+                        <button type="button" class="action-btn btn-editar-acao" onclick="editarRegistro('${reg.idDoc}')" title="Editar">📝</button>
+                        <button type="button" class="action-btn btn-excluir-acao" onclick="excluirRegistro('${reg.idDoc}')" title="Excluir">🗑️</button>
                     </div>
                 </td>
             `;
