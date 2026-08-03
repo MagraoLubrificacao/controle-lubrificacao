@@ -1065,6 +1065,15 @@
     // SALVAR REGISTRO (BANCO FIRESTORE + CLOUDINARY PARA ARQUIVOS)
     window.salvarRegistroFirebase = async function(event) {
         event.preventDefault();
+
+        // Validação: tamanho máximo do arquivo (10MB)
+        const inputArquivoCheck = document.getElementById('comprovante');
+        const TAMANHO_MAXIMO_BYTES = 10 * 1024 * 1024; // 10MB
+        if (inputArquivoCheck.files.length > 0 && inputArquivoCheck.files[0].size > TAMANHO_MAXIMO_BYTES) {
+            window.mostrarToast('✕ Arquivo maior que 10MB. Escolha um arquivo menor.', 'erro');
+            return;
+        }
+
         const btnSalvar = document.getElementById('btnSalvar');
         btnSalvar.innerText = "Salvando...";
         btnSalvar.disabled = true;
