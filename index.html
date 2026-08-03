@@ -10,6 +10,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         // ==========================================
         // 🔑 CREDENCIAIS DO FIREBASE (CONFIGURADAS)
@@ -27,20 +28,58 @@
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
         // Disponibilizar globais para as funções do formulário
         window.db = db;
         window.colRef = collection(db, "registros_lubrificacao");
-        
-        // Iniciar escuta em tempo real do banco de dados
-        onSnapshot(query(window.colRef), (snapshot) => {
-            window.registrosGlobais = [];
-            snapshot.forEach((docSnap) => {
-                window.registrosGlobais.push({ idDoc: docSnap.id, ...docSnap.data() });
+
+        function iniciarEscutaDados() {
+            // Iniciar escuta em tempo real do banco de dados (só depois de logado)
+            onSnapshot(query(window.colRef), (snapshot) => {
+                window.registrosGlobais = [];
+                snapshot.forEach((docSnap) => {
+                    window.registrosGlobais.push({ idDoc: docSnap.id, ...docSnap.data() });
+                });
+                // Quando os dados chegarem ou mudarem, redesenha a tela
+                if (typeof window.renderizarTabelaCompleta === 'function') {
+                    window.renderizarTabelaCompleta();
+                }
             });
-            // Quando os dados chegarem ou mudarem, redesenha a tela
-            if (typeof window.renderizarTabelaCompleta === 'function') {
-                window.renderizarTabelaCompleta();
+        }
+
+        // ===== CONTROLE DE LOGIN =====
+        window.fazerLogin = function () {
+            const email = document.getElementById('loginEmail').value.trim();
+            const senha = document.getElementById('loginSenha').value;
+            const erroEl = document.getElementById('loginErro');
+            erroEl.style.display = 'none';
+
+            signInWithEmailAndPassword(auth, email, senha)
+                .catch((error) => {
+                    erroEl.textContent = "E-mail ou senha incorretos.";
+                    erroEl.style.display = 'block';
+                });
+        }
+
+        window.fazerLogout = function () {
+            signOut(auth);
+        }
+
+        let escutaDadosIniciada = false;
+        onAuthStateChanged(auth, (usuario) => {
+            const telaLogin = document.getElementById('telaLogin');
+            const appConteudo = document.getElementById('appConteudo');
+            if (usuario) {
+                telaLogin.style.display = 'none';
+                appConteudo.style.display = 'block';
+                if (!escutaDadosIniciada) {
+                    escutaDadosIniciada = true;
+                    iniciarEscutaDados();
+                }
+            } else {
+                telaLogin.style.display = 'flex';
+                appConteudo.style.display = 'none';
             }
         });
     </script>
@@ -680,16 +719,101 @@
             background: var(--warning);
             color: #fff;
         }
+        .login-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg);
+            background-image: radial-gradient(circle at 100% 0%, rgba(245,166,35,0.06), transparent 40%);
+        }
+        .login-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 8px;
+            padding: 32px 30px;
+            width: 100%;
+            max-width: 340px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        }
+        .login-box .logo-mark {
+            width: 42px; height: 42px; font-size: 1rem;
+            margin: 0 auto 14px auto;
+        }
+        .login-box h2 {
+            text-align: center;
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+        .login-box .login-subtitle {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+        .login-box .form-group { margin-bottom: 12px; }
+        .login-box button {
+            width: 100%;
+            margin-top: 6px;
+            height: 38px;
+        }
+        .login-erro {
+            display: none;
+            background: rgba(239,68,68,0.12);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,0.3);
+            padding: 8px 10px;
+            border-radius: 5px;
+            font-size: 0.78rem;
+            margin-bottom: 12px;
+        }
+        .btn-logout {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            height: 30px;
+            padding: 0 10px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        .btn-logout:hover { border-color: var(--warning); color: var(--warning); }
+        .header-row { display: flex; align-items: center; width: 100%; gap: 12px; }
     </style>
 </head>
 <body>
 
+<!-- TELA DE LOGIN -->
+<div id="telaLogin" class="login-overlay">
+    <div class="login-box">
+        <div class="logo-mark">CL</div>
+        <h2>Controle de Lubrificação</h2>
+        <div class="login-subtitle">Faça login para acessar</div>
+        <div id="loginErro" class="login-erro"></div>
+        <div class="form-group">
+            <label>E-mail</label>
+            <input type="email" id="loginEmail" placeholder="seuemail@exemplo.com">
+        </div>
+        <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="loginSenha" placeholder="••••••••">
+        </div>
+        <button onclick="fazerLogin()">Entrar</button>
+    </div>
+</div>
+
+<div id="appConteudo" style="display: none;">
 <div class="container">
     <header class="app-header">
-        <div class="logo-mark">CL</div>
-        <div>
-            <h1>Controle de Óleo e Lubrificação</h1>
-            <div class="app-subtitle">Gestão de frota &amp; manutenção</div>
+        <div class="header-row">
+            <div class="logo-mark">CL</div>
+            <div>
+                <h1>Controle de Óleo e Lubrificação</h1>
+                <div class="app-subtitle">Gestão de frota &amp; manutenção</div>
+            </div>
+            <button class="btn-logout" onclick="fazerLogout()">Sair</button>
         </div>
     </header>
     <div class="hazard-divider"></div>
@@ -1314,5 +1438,6 @@
         return `${dia}/${mes}/${ano}`;
     }
 </script>
+</div>
 </body>
 </html>
