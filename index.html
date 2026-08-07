@@ -1189,7 +1189,7 @@
 
         const containerComp = document.getElementById('comprovanteAtual');
         if (reg.comprovanteNome) {
-            containerComp.innerHTML = `📎 Comprovante atual: <a href="${reg.comprovanteUrl}" target="_blank"><strong>${reg.comprovanteNome}</strong></a> <button type="button" class="btn-remover-comp" onclick="removerComprovanteAtual()">❌ Remover</button>`;
+            containerComp.innerHTML = `📎 Comprovante atual: <a href="${escapeHtml(reg.comprovanteUrl)}" target="_blank"><strong>${escapeHtml(reg.comprovanteNome)}</strong></a> <button type="button" class="btn-remover-comp" onclick="removerComprovanteAtual()">❌ Remover</button>`;
         } else {
             containerComp.innerHTML = '';
         }
@@ -1383,18 +1383,18 @@
             }
 
             tr.innerHTML = `
-                <td data-label="Empresa" title="${reg.empresa}"><strong>${reg.empresa}</strong></td>
-                <td data-label="Placa">${reg.placa}</td>
-                <td data-label="Motorista" title="${reg.motorista}">${reg.motorista}</td>
+                <td data-label="Empresa" title="${escapeHtml(reg.empresa)}"><strong>${escapeHtml(reg.empresa)}</strong></td>
+                <td data-label="Placa">${escapeHtml(reg.placa)}</td>
+                <td data-label="Motorista" title="${escapeHtml(reg.motorista)}">${escapeHtml(reg.motorista)}</td>
                 <td data-label="Data">${dataServicoBR}</td>
-                <td data-label="Tipo">${reg.tipoServico || 'Lubrificação'}</td>
-                <td data-label="Descrição" class="col-descricao" title="${reg.descricao || ''}">${reg.descricao || '—'}</td>
+                <td data-label="Tipo">${escapeHtml(reg.tipoServico || 'Lubrificação')}</td>
+                <td data-label="Descrição" class="col-descricao" title="${escapeHtml(reg.descricao || '')}">${escapeHtml(reg.descricao) || '—'}</td>
                 <td data-label="Próx. Lub.">${exibicaoProxLub}</td>
                 <td data-label="Próx. Óleo">${exibicaoProxOleo}</td>
                 <td data-label="Valor">R$ ${reg.valor}</td>
                 <td data-label="Status"><span class="badge ${reg.statusPagamento === 'Pago' ? 'badge-pago' : 'badge-pendente'}">${reg.statusPagamento}</span></td>
                 <td data-label="Comp.">
-                    ${reg.comprovanteUrl ? `<a href="${reg.comprovanteUrl}" target="_blank" class="comprovante-btn">📄 Ver</a>` : '—'}
+                    ${reg.comprovanteUrl ? `<a href="${escapeHtml(reg.comprovanteUrl)}" target="_blank" class="comprovante-btn">📄 Ver</a>` : '—'}
                 </td>
                 <td data-label="Ações">
                     <div class="flex-actions">
@@ -1432,7 +1432,7 @@
         } else {
             listaVencidos.innerHTML = vencidos.map(item => `
                 <div class="aviso-item">
-                    <span>⚠️ <strong>${item.placa}</strong> (${item.empresa}) - <span style="color: #f87171;">${item.tipo}</span> (${item.dias}d)</span>
+                    <span>⚠️ <strong>${escapeHtml(item.placa)}</strong> (${escapeHtml(item.empresa)}) - <span style="color: #f87171;">${escapeHtml(item.tipo)}</span> (${item.dias}d)</span>
                     <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google">📅 Add Agenda</a>
                 </div>
             `).join('');
@@ -1445,7 +1445,7 @@
                 let textoDias = item.dias === 0 ? "Vence hoje!" : `Vence em ${item.dias}d`;
                 return `
                     <div class="aviso-item">
-                        <span>📅 <strong>${item.placa}</strong> (${item.empresa}) - <span style="color: #fbbf24;">${item.tipo}</span>: ${textoDias}</span>
+                        <span>📅 <strong>${escapeHtml(item.placa)}</strong> (${escapeHtml(item.empresa)}) - <span style="color: #fbbf24;">${escapeHtml(item.tipo)}</span>: ${textoDias}</span>
                         <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google">📅 Add Agenda</a>
                     </div>
                 `;
@@ -1469,7 +1469,7 @@
             if (termoBuscaEmpresa !== "" && !empresaNome.toLowerCase().includes(termoBuscaEmpresa)) return;
             const chip = document.createElement('div');
             chip.className = 'pasta-chip';
-            chip.innerHTML = `📁 ${empresaNome}`;
+            chip.innerHTML = `📁 ${escapeHtml(empresaNome)}`;
             chip.onclick = () => {
                 document.getElementById('filterEmpresa').value = empresaNome;
                 window.filtrarDados();
@@ -1494,6 +1494,19 @@
         if (!dataISO) return '—';
         const [ano, mes, dia] = dataISO.split('-');
         return `${dia}/${mes}/${ano}`;
+    }
+
+    // PROTEÇÃO: neutraliza caracteres de HTML em textos digitados pelo usuário (empresa,
+    // motorista, descrição, placa, etc.) antes de inserir na tela, para que um texto digitado
+    // não possa ser interpretado como código pelo navegador.
+    function escapeHtml(texto) {
+        if (texto === null || texto === undefined) return '';
+        return String(texto)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 </script>
 </div>
