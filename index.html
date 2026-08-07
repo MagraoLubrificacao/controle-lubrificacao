@@ -1080,8 +1080,8 @@
 
         try {
             const idEdicao = document.getElementById('registroId').value;
-            const empresa = document.getElementById('empresa').value;
-            const placa = document.getElementById('placa').value.toUpperCase();
+            const empresa = document.getElementById('empresa').value.trim();
+            const placa = document.getElementById('placa').value.trim().toUpperCase();
             const motorista = document.getElementById('motorista').value;
             const dataServico = document.getElementById('dataServico').value;
             const tipoServico = document.getElementById('tipoServico').value;
@@ -1231,6 +1231,30 @@
         window.renderizarTabelaCompleta();
     }
 
+    function calcularUltimosVencimentosPorPlaca(dados) {
+        // BUGFIX: cada placa deve ter, para cada tipo de serviço (Lubrificação e Troca de
+        // Óleo), apenas UM vencimento "vigente": o do registro mais recente. Sem isso, um
+        // registro antigo já superado por um serviço novo continuava sendo contado como
+        // vencido para sempre, e um serviço de Troca de Óleo feito hoje não "zerava" o prazo
+        // de uma Lubrificação feita numa data diferente (e vice-versa).
+        const mapa = {};
+        dados.forEach(reg => {
+            if (!reg.placa) return;
+            if (!mapa[reg.placa]) mapa[reg.placa] = { lub: null, oleo: null };
+            const entry = mapa[reg.placa];
+
+            const ehMaisRecente = (atual, novo) => {
+                if (!atual) return true;
+                if (novo.dataServico !== atual.dataServico) return novo.dataServico > atual.dataServico;
+                return (novo.criadoEm || 0) > (atual.criadoEm || 0);
+            };
+
+            if (reg.proximaLubrificacao && ehMaisRecente(entry.lub, reg)) entry.lub = reg;
+            if (reg.proximaTrocaOleo && ehMaisRecente(entry.oleo, reg)) entry.oleo = reg;
+        });
+        return mapa;
+    }
+
     window.renderizarTabelaCompleta = function() {
         const dados = window.registrosGlobais || [];
         const corpo = document.getElementById('tabelaCorpo');
@@ -1280,37 +1304,62 @@
             return bateEmpresa && batePlaca && bateStatus;
         });
 
+        // Vencimento "vigente" de cada placa/tipo (sempre baseado em TODOS os registros,
+        // não só nos filtrados, para o painel de alertas não sumir quando um filtro é aplicado)
+        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
+
+        Object.keys(ultimosVencimentos).forEach(placaKey => {
+            const entry = ultimosVencimentos[placaKey];
+
+            if (entry.lub) {
+                const [anoL, mesL, diaL] = entry.lub.proximaLubrificacao.split('-');
+                const dataLub = new Date(anoL, mesL - 1, diaL);
+                const diff = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    vencidosList.push({ idDoc: entry.lub.idDoc, placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: Math.abs(diff) });
+                } else if (diff <= 5) {
+                    urgentesList.push({ idDoc: entry.lub.idDoc, placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: diff });
+                }
+            }
+
+            if (entry.oleo) {
+                const [anoO, mesO, diaO] = entry.oleo.proximaTrocaOleo.split('-');
+                const dataOleo = new Date(anoO, mesO - 1, diaO);
+                const diff = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    vencidosList.push({ idDoc: entry.oleo.idDoc, placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: Math.abs(diff) });
+                } else if (diff <= 5) {
+                    urgentesList.push({ idDoc: entry.oleo.idDoc, placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: diff });
+                }
+            }
+        });
+
         dadosParaExibir.forEach(reg => {
             const tr = document.createElement('tr');
             let diffLubDias = null;
             let diffOleoDias = null;
             let alertaAtivo = false;
 
+            const entryPlaca = ultimosVencimentos[reg.placa] || {};
+            // Só é o vencimento "vigente" se este registro for o mais recente daquele tipo para a placa
+            const ehVigenteLub = !!(reg.proximaLubrificacao && entryPlaca.lub && entryPlaca.lub.idDoc === reg.idDoc);
+            const ehVigenteOleo = !!(reg.proximaTrocaOleo && entryPlaca.oleo && entryPlaca.oleo.idDoc === reg.idDoc);
+
             if (reg.proximaLubrificacao) {
                 const [anoL, mesL, diaL] = reg.proximaLubrificacao.split('-');
                 const dataLub = new Date(anoL, mesL - 1, diaL);
                 // Math.round é mais seguro que Math.ceil para contagem exata de dias
                 diffLubDias = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
-                
-                if (diffLubDias < 0) {
-                    vencidosList.push({ idDoc: reg.idDoc, placa: reg.placa, empresa: reg.empresa, tipo: 'Lubrificação', data: reg.proximaLubrificacao, dias: Math.abs(diffLubDias) });
-                } else if (diffLubDias >= 0 && diffLubDias <= 5) {
-                    urgentesList.push({ idDoc: reg.idDoc, placa: reg.placa, empresa: reg.empresa, tipo: 'Lubrificação', data: reg.proximaLubrificacao, dias: diffLubDias });
-                }
-                if (diffLubDias <= 5) alertaAtivo = true;
+
+                if (ehVigenteLub && diffLubDias <= 5) alertaAtivo = true;
             }
 
             if (reg.proximaTrocaOleo) {
                 const [anoO, mesO, diaO] = reg.proximaTrocaOleo.split('-');
                 const dataOleo = new Date(anoO, mesO - 1, diaO);
                 diffOleoDias = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
-                
-                if (diffOleoDias < 0) {
-                    vencidosList.push({ idDoc: reg.idDoc, placa: reg.placa, empresa: reg.empresa, tipo: 'Troca de Óleo', data: reg.proximaTrocaOleo, dias: Math.abs(diffOleoDias) });
-                } else if (diffOleoDias >= 0 && diffOleoDias <= 5) {
-                    urgentesList.push({ idDoc: reg.idDoc, placa: reg.placa, empresa: reg.empresa, tipo: 'Troca de Óleo', data: reg.proximaTrocaOleo, dias: diffOleoDias });
-                }
-                if (diffOleoDias <= 5) alertaAtivo = true;
+
+                if (ehVigenteOleo && diffOleoDias <= 5) alertaAtivo = true;
             }
 
             if (alertaAtivo) tr.classList.add('alert-row');
@@ -1319,8 +1368,8 @@
             const proxLubBR = reg.proximaLubrificacao ? formatarData(reg.proximaLubrificacao) : '—';
             const proxOleoBR = reg.proximaTrocaOleo ? formatarData(reg.proximaTrocaOleo) : '—';
 
-            const exibicaoProxLub = (diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
-            const exibicaoProxOleo = (diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
+            const exibicaoProxLub = (ehVigenteLub && diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
+            const exibicaoProxOleo = (ehVigenteOleo && diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
 
             // LÓGICA DO BOTÃO DA AGENDA NA TABELA
             let dataAgenda = reg.proximaTrocaOleo || reg.proximaLubrificacao;
