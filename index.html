@@ -870,6 +870,7 @@
             margin-top: 8px;
         }
         .btn-cobranca-whatsapp:hover { background-color: #16a34a; }
+        #viewVencimento .lista-avisos { max-height: none; }
     </style>
 </head>
 <body>
@@ -914,21 +915,6 @@
     </nav>
 
     <div id="viewVisaoGeral" class="view-secao">
-    <div class="agenda-alertas">
-        <div class="alerta-card vencido" id="cardVencidos">
-            <h3>🔴 Próximos Vencidos (Passou do prazo)</h3>
-            <div class="lista-avisos" id="listaVencidos">
-                <div style="color: var(--text-muted);">Nenhum item vencido.</div>
-            </div>
-        </div>
-        <div class="alerta-card urgente" id="cardUrgentes">
-            <h3>🟡 Vencem nos próximos 5 dias</h3>
-            <div class="lista-avisos" id="listaUrgentes">
-                <div style="color: var(--text-muted);">Nenhum vencimento próximo.</div>
-            </div>
-        </div>
-    </div>
-
     <div class="filters-panel">
         <div class="finance-summary">
             <div class="finance-group">
@@ -1051,7 +1037,20 @@
     </div>
 
     <div id="viewVencimento" class="view-secao">
-        <div class="view-placeholder">Em construção — chega em breve.</div>
+        <div class="agenda-alertas">
+            <div class="alerta-card vencido" id="cardVencidos">
+                <h3>🔴 Vencidos (Passou do prazo)</h3>
+                <div class="lista-avisos" id="listaVencidos">
+                    <div style="color: var(--text-muted);">Nenhum item vencido.</div>
+                </div>
+            </div>
+            <div class="alerta-card urgente" id="cardUrgentes">
+                <h3>🟡 Vencem nos próximos 5 dias</h3>
+                <div class="lista-avisos" id="listaUrgentes">
+                    <div style="color: var(--text-muted);">Nenhum vencimento próximo.</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="toastMsg" class="toast"></div>
@@ -1434,15 +1433,9 @@
     window.renderizarTabelaCompleta = function() {
         const dados = window.registrosGlobais || [];
 
-        const dataHoje = new Date();
-        // Lógica mais segura para garantir o "Hoje" na meia-noite sem fuso
-        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
-
         const mesSelecionado = parseInt(document.getElementById('selectMes').value);
         const anoSelecionado = parseInt(document.getElementById('selectAno').value);
 
-        let vencidosList = [];
-        let urgentesList = [];
         let totalPendenteGeral = 0;
         let lucroMesSelecionado = 0;
         let pendenteMesSelecionado = 0;
@@ -1467,41 +1460,10 @@
             if (reg.statusPagamento === 'Pendente') totalPendenteGeral += parseFloat(reg.valor || 0);
         });
 
-        // Vencimento "vigente" de cada placa/tipo (sempre baseado em TODOS os registros,
-        // não só nos filtrados, para o painel de alertas não sumir quando um filtro é aplicado)
-        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
-
-        Object.keys(ultimosVencimentos).forEach(placaKey => {
-            const entry = ultimosVencimentos[placaKey];
-
-            if (entry.lub) {
-                const [anoL, mesL, diaL] = entry.lub.proximaLubrificacao.split('-');
-                const dataLub = new Date(anoL, mesL - 1, diaL);
-                const diff = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
-                if (diff < 0) {
-                    vencidosList.push({ idDoc: entry.lub.idDoc, placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: Math.abs(diff) });
-                } else if (diff <= 5) {
-                    urgentesList.push({ idDoc: entry.lub.idDoc, placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: diff });
-                }
-            }
-
-            if (entry.oleo) {
-                const [anoO, mesO, diaO] = entry.oleo.proximaTrocaOleo.split('-');
-                const dataOleo = new Date(anoO, mesO - 1, diaO);
-                const diff = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
-                if (diff < 0) {
-                    vencidosList.push({ idDoc: entry.oleo.idDoc, placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: Math.abs(diff) });
-                } else if (diff <= 5) {
-                    urgentesList.push({ idDoc: entry.oleo.idDoc, placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: diff });
-                }
-            }
-        });
-
         document.getElementById('lucroMes').innerText = `R$ ${lucroMesSelecionado.toFixed(2)}`;
         document.getElementById('qtdServicosMes').innerText = `${qtdServicosMesSelecionado}`;
         document.getElementById('totalPendenteGeral').innerText = `R$ ${totalPendenteGeral.toFixed(2)}`;
 
-        atualizarPainelAvisos(vencidosList, urgentesList);
         atualizarGraficos(lucroMesSelecionado, pendenteMesSelecionado, tiposContagemMes);
     }
 
@@ -1587,9 +1549,9 @@
             listaVencidos.innerHTML = '<div style="color: var(--text-muted);">Nenhum item vencido.</div>';
         } else {
             listaVencidos.innerHTML = vencidos.map(item => `
-                <div class="aviso-item">
+                <div class="aviso-item" style="cursor:pointer;" data-empresa="${escapeHtml(item.empresa)}" onclick="window.abrirPasta(this.dataset.empresa)">
                     <span>⚠️ <strong>${escapeHtml(item.placa)}</strong> (${escapeHtml(item.empresa)}) - <span style="color: #f87171;">${escapeHtml(item.tipo)}</span> (${item.dias}d)</span>
-                    <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google">📅 Add Agenda</a>
+                    <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google" onclick="event.stopPropagation()">📅 Add Agenda</a>
                 </div>
             `).join('');
         }
@@ -1600,13 +1562,50 @@
             listaUrgentes.innerHTML = urgentes.map(item => {
                 let textoDias = item.dias === 0 ? "Vence hoje!" : `Vence em ${item.dias}d`;
                 return `
-                    <div class="aviso-item">
+                    <div class="aviso-item" style="cursor:pointer;" data-empresa="${escapeHtml(item.empresa)}" onclick="window.abrirPasta(this.dataset.empresa)">
                         <span>📅 <strong>${escapeHtml(item.placa)}</strong> (${escapeHtml(item.empresa)}) - <span style="color: #fbbf24;">${escapeHtml(item.tipo)}</span>: ${textoDias}</span>
-                        <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google">📅 Add Agenda</a>
+                        <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google" onclick="event.stopPropagation()">📅 Add Agenda</a>
                     </div>
                 `;
             }).join('');
         }
+    }
+
+    window.renderizarVencimento = function() {
+        const dados = window.registrosGlobais || [];
+        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
+        const dataHoje = new Date();
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        let vencidosList = [];
+        let urgentesList = [];
+
+        Object.keys(ultimosVencimentos).forEach(placaKey => {
+            const entry = ultimosVencimentos[placaKey];
+
+            if (entry.lub) {
+                const [anoL, mesL, diaL] = entry.lub.proximaLubrificacao.split('-');
+                const dataLub = new Date(anoL, mesL - 1, diaL);
+                const diff = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    vencidosList.push({ placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: Math.abs(diff) });
+                } else if (diff <= 5) {
+                    urgentesList.push({ placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: diff });
+                }
+            }
+
+            if (entry.oleo) {
+                const [anoO, mesO, diaO] = entry.oleo.proximaTrocaOleo.split('-');
+                const dataOleo = new Date(anoO, mesO - 1, diaO);
+                const diff = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    vencidosList.push({ placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: Math.abs(diff) });
+                } else if (diff <= 5) {
+                    urgentesList.push({ placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: diff });
+                }
+            }
+        });
+
+        atualizarPainelAvisos(vencidosList, urgentesList);
     }
 
     window.abrirPasta = function(nomeEmpresa) {
