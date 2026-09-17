@@ -63,6 +63,17 @@ Cada seção de conteúdo (`viewVisaoGeral`, `viewPastas`, `viewVencimento`) é 
 `<div>` que passa a ser escondido/exibido via `style.display`, reutilizando o
 padrão que o próprio arquivo já usa para `telaLogin`/`appConteudo`.
 
+**Ponto de atenção:** hoje existe um único ponto de entrada de redesenho —
+`window.renderizarTabelaCompleta`, chamado pelo listener do Firestore
+(`onSnapshot`) toda vez que os dados mudam. Com 3 telas diferentes, esse hook
+único vira uma função `renderizarViewAtual()` que olha o hash atual e chama
+somente a função de renderização da tela ativa (Visão Geral, lista de Pastas,
+detalhe de uma Pasta, ou Vencimento). É essa função — e não mais
+`renderizarTabelaCompleta` diretamente — que o `onSnapshot` e o `hashchange`
+passam a chamar. Sem essa troca, editar/excluir um registro estando dentro de
+uma Pasta não atualizaria a tela sozinho (só atualizaria quando o usuário
+trocasse de aba e voltasse).
+
 ## 5. Aba "Visão Geral"
 
 Mantém exatamente o que já existe hoje nessa área: os seletores de mês/ano, os 3
@@ -77,14 +88,17 @@ respectivamente).
 
 - Reaproveita a busca por empresa/placa e o filtro de status que já existem
   (`filterEmpresa`, `filterPlaca`, `filterStatus`).
-- Cada card de pasta (uma por empresa) ganha um indicador de status calculado a
-  partir de `calcularUltimosVencimentosPorPlaca` (função já existente,
-  implementada na correção do vencimento fantasma) considerando **todas as placas
-  daquela empresa**:
-  - 🔴 se qualquer placa da empresa tem lubrificação ou troca de óleo vencida
-    (vigente, ou seja, o registro mais recente daquele tipo).
-  - 🟡 se nenhuma vencida, mas alguma vence em até 5 dias.
-  - sem bolinha caso contrário.
+- Cada card de pasta (uma por empresa) ganha um indicador de status. Importante:
+  `calcularUltimosVencimentosPorPlaca` é indexada por **placa**, não por empresa —
+  então não dá pra usar o mapa dela direto pra colorir um card de empresa. Nova
+  função `calcularStatusPorEmpresa(dados)` faz o agrupamento: para cada placa do
+  mapa de vencimentos, descobre a empresa dona (via `entry.lub.empresa` /
+  `entry.oleo.empresa`) e guarda o **pior status** já visto pra aquela empresa
+  (`vencido` > `urgente` > `ok`). Resultado: `{ [empresa]: 'vencido' | 'urgente' | 'ok' }`.
+  - 🔴 (`vencido`) se qualquer placa da empresa tem lubrificação ou troca de óleo
+    vencida (vigente, ou seja, o registro mais recente daquele tipo).
+  - 🟡 (`urgente`) se nenhuma vencida, mas alguma vence em até 5 dias.
+  - sem bolinha (`ok`) caso contrário.
 - Clicar num card navega para `#pasta/<empresa>`.
 
 ### 6.2 Detalhe da pasta (`#pasta/<empresa>`)
@@ -103,12 +117,19 @@ nomeEmpresa`) e monta:
 4. **Gráficos da empresa**: os dois mesmos componentes de gráfico
    (`atualizarGraficos`-like), mas alimentados com os totais **all-time** da
    empresa (não do mês selecionado) — Pago x Pendente, e contagem por
-   `tipoServico`. Para não duplicar `atualizarGraficos` (que hoje está acoplado
-   aos ids `chartBarrasMensal`/`chartPizzaServicos` da Visão Geral), a
-   implementação vai extrair a lógica de montagem do `data` do Chart.js para uma
-   função compartilhada que recebe `(canvasEl, totalPago, totalPendente,
-   contagemTipos)`, usada tanto pela Visão Geral quanto pela pasta (com
-   `Chart` instances e canvases próprios da pasta).
+   `tipoServico`. A view de Pasta usa **dois canvases fixos e únicos**
+   (`chartBarrasPasta`/`chartPizzaPasta`, existem uma vez só no HTML, dentro do
+   container da pasta) — ao entrar em empresas diferentes, os mesmos dois
+   canvases têm seus dados atualizados (`instance.data = novoData;
+   instance.update()`), nunca criando uma `new Chart()` num canvas que já tem
+   instância ativa. Isso evita o erro clássico do Chart.js "Canvas is already in
+   use" que aconteceria se cada empresa tentasse ter seu próprio canvas
+   recriado a cada clique. A lógica de montagem do `data` é extraída para uma
+   função compartilhada (recebe `totalPago, totalPendente, contagemTipos` e
+   devolve os objetos `data` do Chart.js), reaproveitada tanto pela Visão Geral
+   quanto pela Pasta, mas cada uma mantém sua própria variável de instância
+   (`chartCaixaInstance`/`chartTiposInstance` para Visão Geral,
+   `chartCaixaPastaInstance`/`chartTiposPastaInstance` para Pasta).
 5. **Seção "Pendentes"**: lista só os registros dessa empresa com
    `statusPagamento === 'Pendente'`, mostrando data do serviço, tipo, placa e
    valor. Botão **"Gerar cobrança (WhatsApp)"** monta um texto assim:
@@ -146,8 +167,12 @@ filtrados), mas:
 
 ## 8. Modal "Novo Registro"
 
-Passa a ser um popup (`<dialog>` ou overlay fixo) aberto pelo botão flutuante,
-com os mesmos campos de hoje, mas:
+Passa a ser um popup aberto pelo botão flutuante — implementado como um `<div>`
+overlay fixo (`position: fixed`, fundo escurecido, `display: none` por padrão),
+**não** como `<dialog>` nativo. Motivo: `<dialog>` fecha sozinho com ESC/gesto de
+"voltar" em vários navegadores mobile, o que perderia o que a pessoa tava
+digitando sem aviso — o overlay fixo só fecha pelo botão "X"/Cancelar ou após
+salvar com sucesso. Com os mesmos campos de hoje, mas:
 
 - Agrupados visualmente em 3 blocos: **Identificação** (Empresa, Placa,
   Motorista), **Serviço** (Tipo, Data, Prazo, Descrição), **Financeiro** (Valor,
@@ -209,6 +234,13 @@ será manual, no navegador, cobrindo:
    após login, e o botão "voltar" do navegador entre pastas.
 7. Conferir que a Visão Geral continua mostrando os números/gráficos mensais
    exatamente como hoje (nada deve regressar aqui).
+8. Abrir a pasta de uma empresa, depois abrir a pasta de outra empresa em
+   seguida (sem recarregar a página) — os gráficos devem trocar de dados sem
+   travar nem gerar erro no console (teste específico do risco do Chart.js
+   descrito na seção 6.2).
+9. Com uma pasta aberta, editar um registro dela pelo modal e confirmar que a
+   pasta atualiza sozinha (sem precisar trocar de aba) assim que o Firestore
+   confirma a gravação.
 
 ## 12. Riscos e mitigação
 
@@ -219,3 +251,8 @@ será manual, no navegador, cobrindo:
   (`trim().toLowerCase()` para comparar, mantendo o texto original para exibir).
 - **Regressão visual/funcional na Visão Geral** ao mover código: extrair com
   cuidado, testar lado a lado antes/depois com os mesmos dados reais.
+- **Mensagem de cobrança muito longa** (empresa com dezenas de pendentes de
+  uma vez): `wa.me` tem um limite prático de tamanho de URL. Para o volume
+  esperado (uma transportadora com alguns caminhões) isso não deve ocorrer;
+  não vamos criar um limite artificial agora, mas fica registrado como algo a
+  revisitar se algum dia acontecer.
