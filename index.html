@@ -1013,6 +1013,16 @@
         <div id="pastasSubviewDetalhe" style="display: none;">
             <button type="button" class="btn-voltar-pasta" onclick="location.hash = '#pastas'">◀ Voltar pra lista de pastas</button>
             <div id="conteudoDetalhePasta"></div>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>📊 Pago x Pendente (histórico da pasta)</h3>
+                    <div class="chart-wrapper"><canvas id="chartBarrasPasta"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3>🥧 Tipos de Serviço (histórico da pasta)</h3>
+                    <div class="chart-wrapper"><canvas id="chartPizzaPasta"></canvas></div>
+                </div>
+            </div>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1046,11 +1056,7 @@
     let chartCaixaInstance = null;
     let chartTiposInstance = null;
 
-    function atualizarGraficos(totalPago, totalPendente, contagemTipos) {
-        const ctxCaixa = document.getElementById('chartBarrasMensal');
-        const ctxTipos = document.getElementById('chartPizzaServicos');
-
-        // Gráfico de Fluxo de Caixa (Pago x Pendente do mês selecionado)
+    function construirDadosGraficos(totalPago, totalPendente, contagemTipos) {
         const dataCaixa = {
             labels: ['Recebido (Pago)', 'A Receber (Pendente)'],
             datasets: [{
@@ -1061,30 +1067,9 @@
             }]
         };
 
-        if (chartCaixaInstance) {
-            chartCaixaInstance.data = dataCaixa;
-            chartCaixaInstance.update();
-        } else {
-            chartCaixaInstance = new Chart(ctxCaixa, {
-                type: 'bar',
-                data: dataCaixa,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: '#8890a0', font: { size: 11 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#8890a0', font: { family: 'monospace', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
-                    }
-                }
-            });
-        }
-
-        // Gráfico de Tipos de Serviço (contagem do mês selecionado)
         const labelsTipos = Object.keys(contagemTipos);
         const valoresTipos = Object.values(contagemTipos);
         const coresTipos = ['#f5a623', '#38bdf8', '#8890a0', '#22c55e'];
-
         const dataTipos = {
             labels: labelsTipos,
             datasets: [{
@@ -1095,25 +1080,73 @@
             }]
         };
 
+        return { dataCaixa, dataTipos };
+    }
+
+    const OPCOES_GRAFICO_BARRAS = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#8890a0', font: { size: 11 } }, grid: { display: false } },
+            y: { beginAtZero: true, ticks: { color: '#8890a0', font: { family: 'monospace', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        }
+    };
+
+    const OPCOES_GRAFICO_PIZZA = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { color: '#8890a0', font: { size: 11 }, boxWidth: 10, padding: 10 }
+            }
+        }
+    };
+
+    function atualizarGraficos(totalPago, totalPendente, contagemTipos) {
+        const ctxCaixa = document.getElementById('chartBarrasMensal');
+        const ctxTipos = document.getElementById('chartPizzaServicos');
+        const { dataCaixa, dataTipos } = construirDadosGraficos(totalPago, totalPendente, contagemTipos);
+
+        if (chartCaixaInstance) {
+            chartCaixaInstance.data = dataCaixa;
+            chartCaixaInstance.update();
+        } else {
+            chartCaixaInstance = new Chart(ctxCaixa, { type: 'bar', data: dataCaixa, options: OPCOES_GRAFICO_BARRAS });
+        }
+
         if (chartTiposInstance) {
             chartTiposInstance.data = dataTipos;
             chartTiposInstance.update();
         } else {
-            chartTiposInstance = new Chart(ctxTipos, {
-                type: 'doughnut',
-                data: dataTipos,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '65%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#8890a0', font: { size: 11 }, boxWidth: 10, padding: 10 }
-                        }
-                    }
-                }
-            });
+            chartTiposInstance = new Chart(ctxTipos, { type: 'doughnut', data: dataTipos, options: OPCOES_GRAFICO_PIZZA });
+        }
+    }
+
+    let chartCaixaPastaInstance = null;
+    let chartTiposPastaInstance = null;
+
+    function atualizarGraficosPasta(totalPago, totalPendente, contagemTipos) {
+        const ctxCaixa = document.getElementById('chartBarrasPasta');
+        const ctxTipos = document.getElementById('chartPizzaPasta');
+        const { dataCaixa, dataTipos } = construirDadosGraficos(totalPago, totalPendente, contagemTipos);
+
+        // Mesmos 2 canvases sempre reaproveitados ao trocar de empresa — nunca cria um Chart
+        // novo em cima de um canvas que já tem instância ativa (evita "Canvas is already in use").
+        if (chartCaixaPastaInstance) {
+            chartCaixaPastaInstance.data = dataCaixa;
+            chartCaixaPastaInstance.update();
+        } else {
+            chartCaixaPastaInstance = new Chart(ctxCaixa, { type: 'bar', data: dataCaixa, options: OPCOES_GRAFICO_BARRAS });
+        }
+
+        if (chartTiposPastaInstance) {
+            chartTiposPastaInstance.data = dataTipos;
+            chartTiposPastaInstance.update();
+        } else {
+            chartTiposPastaInstance = new Chart(ctxTipos, { type: 'doughnut', data: dataTipos, options: OPCOES_GRAFICO_PIZZA });
         }
     }
 
@@ -1646,6 +1679,13 @@
         registrosDaEmpresa.forEach(reg => {
             corpoPasta.appendChild(montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao));
         });
+
+        const tiposContagemPasta = {};
+        registrosDaEmpresa.forEach(r => {
+            const tipo = r.tipoServico || 'Outros';
+            tiposContagemPasta[tipo] = (tiposContagemPasta[tipo] || 0) + 1;
+        });
+        atualizarGraficosPasta(totalGanho, totalDeve, tiposContagemPasta);
     }
 
     window.limparFiltroLateral = function() {
