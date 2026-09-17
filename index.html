@@ -41,9 +41,9 @@
                 snapshot.forEach((docSnap) => {
                     window.registrosGlobais.push({ idDoc: docSnap.id, ...docSnap.data() });
                 });
-                // Quando os dados chegarem ou mudarem, redesenha a tela
-                if (typeof window.renderizarTabelaCompleta === 'function') {
-                    window.renderizarTabelaCompleta();
+                // Quando os dados chegarem ou mudarem, redesenha a view que estiver ativa
+                if (typeof window.renderizarViewAtual === 'function') {
+                    window.renderizarViewAtual();
                 }
             });
         }
@@ -781,6 +781,41 @@
         }
         .btn-logout:hover { border-color: var(--warning); color: var(--warning); }
         .header-row { display: flex; align-items: center; width: 100%; gap: 12px; }
+
+        .tabs-principais {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-link {
+            padding: 9px 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+        }
+        .tab-link:hover { color: var(--text); }
+        .tab-link.ativo {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .view-secao { display: none; }
+        .view-secao.ativa { display: block; }
+        .view-placeholder {
+            background: var(--card-bg);
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -818,6 +853,13 @@
     </header>
     <div class="hazard-divider"></div>
 
+    <nav class="tabs-principais">
+        <a href="#visao-geral" class="tab-link" data-tab="visao-geral">Visão Geral</a>
+        <a href="#pastas" class="tab-link" data-tab="pastas">Pastas</a>
+        <a href="#vencimento" class="tab-link" data-tab="vencimento">Vencimento</a>
+    </nav>
+
+    <div id="viewVisaoGeral" class="view-secao">
     <div class="agenda-alertas">
         <div class="alerta-card vencido" id="cardVencidos">
             <h3>🔴 Próximos Vencidos (Passou do prazo)</h3>
@@ -933,6 +975,15 @@
             </thead>
             <tbody id="tabelaCorpo"></tbody>
         </table>
+    </div>
+    </div><!-- /viewVisaoGeral -->
+
+    <div id="viewPastas" class="view-secao">
+        <div class="view-placeholder">Em construção — chega na próxima etapa.</div>
+    </div>
+
+    <div id="viewVencimento" class="view-secao">
+        <div class="view-placeholder">Em construção — chega em breve.</div>
     </div>
 
     <div id="toastMsg" class="toast"></div>
@@ -1495,6 +1546,39 @@
         const [ano, mes, dia] = dataISO.split('-');
         return `${dia}/${mes}/${ano}`;
     }
+
+    const VIEWS_VALIDAS = ['visao-geral', 'pastas', 'vencimento'];
+
+    function obterViewAtualDoHash() {
+        const hash = (location.hash || '').replace('#', '');
+        if (hash.startsWith('pasta/')) return 'pastas';
+        return VIEWS_VALIDAS.includes(hash) ? hash : 'visao-geral';
+    }
+
+    window.renderizarViewAtual = function() {
+        const viewAtiva = obterViewAtualDoHash();
+
+        document.querySelectorAll('.view-secao').forEach(el => el.classList.remove('ativa'));
+        const elIds = { 'visao-geral': 'viewVisaoGeral', 'pastas': 'viewPastas', 'vencimento': 'viewVencimento' };
+        document.getElementById(elIds[viewAtiva]).classList.add('ativa');
+
+        document.querySelectorAll('.tab-link').forEach(a => {
+            a.classList.toggle('ativo', a.dataset.tab === viewAtiva);
+        });
+
+        if (viewAtiva === 'visao-geral' && typeof window.renderizarTabelaCompleta === 'function') {
+            window.renderizarTabelaCompleta();
+        }
+        if (viewAtiva === 'pastas' && typeof window.renderizarListaPastas === 'function') {
+            window.renderizarListaPastas();
+        }
+        if (viewAtiva === 'vencimento' && typeof window.renderizarVencimento === 'function') {
+            window.renderizarVencimento();
+        }
+    }
+
+    window.addEventListener('hashchange', window.renderizarViewAtual);
+    window.renderizarViewAtual();
 
     // PROTEÇÃO: neutraliza caracteres de HTML em textos digitados pelo usuário (empresa,
     // motorista, descrição, placa, etc.) antes de inserir na tela, para que um texto digitado
