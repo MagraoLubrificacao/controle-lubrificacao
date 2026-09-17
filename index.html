@@ -858,6 +858,18 @@
             margin-bottom: 12px;
         }
         .resumo-pasta .finance-item { font-size: 0.85rem; }
+        .lista-pendentes-pasta { margin: 10px 0; font-size: 0.82rem; }
+        .pendente-item-pasta {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+        .btn-cobranca-whatsapp {
+            background-color: #22c55e;
+            margin-top: 8px;
+        }
+        .btn-cobranca-whatsapp:hover { background-color: #16a34a; }
     </style>
 </head>
 <body>
@@ -1669,7 +1681,9 @@
                 <div class="finance-item">Total ganho: <span class="val-lucro">R$ ${totalGanho.toFixed(2)}</span></div>
                 <div class="finance-item">Total a receber: <span class="val-pendente">R$ ${totalDeve.toFixed(2)}</span></div>
             </div>
+            <div id="pendentesPastaContainer"></div>
         `;
+        renderizarPendentesPasta(registrosDaEmpresa[0].empresa, registrosDaEmpresa);
 
         const corpoPasta = document.getElementById('tabelaCorpoPasta');
         corpoPasta.innerHTML = '';
@@ -1686,6 +1700,48 @@
             tiposContagemPasta[tipo] = (tiposContagemPasta[tipo] || 0) + 1;
         });
         atualizarGraficosPasta(totalGanho, totalDeve, tiposContagemPasta);
+    }
+
+    function renderizarPendentesPasta(nomeEmpresa, registrosDaEmpresa) {
+        const pendentes = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pendente');
+        const container = document.getElementById('pendentesPastaContainer');
+
+        if (pendentes.length === 0) {
+            container.innerHTML = '<div class="view-placeholder">Nenhum pendente para essa empresa.</div>';
+            return;
+        }
+
+        const itensHtml = pendentes.map(r => `
+            <div class="pendente-item-pasta">
+                <span>${formatarData(r.dataServico)} — ${escapeHtml(r.tipoServico || 'Serviço')} (placa ${escapeHtml(r.placa)})</span>
+                <strong>R$ ${r.valor}</strong>
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <h3 style="margin: 14px 0 6px 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Pendentes</h3>
+            <div class="lista-pendentes-pasta">${itensHtml}</div>
+            <button type="button" class="btn-cobranca-whatsapp" data-empresa="${escapeHtml(nomeEmpresa)}" onclick="window.gerarCobrancaWhatsapp(this.dataset.empresa)">💬 Gerar cobrança (WhatsApp)</button>
+        `;
+    }
+
+    // Função pura (sem DOM) — recebe já a lista de pendentes e devolve o texto da mensagem.
+    // Isso permite testar o formato da mensagem direto no console, sem precisar clicar em nada.
+    function gerarMensagemCobranca(nomeEmpresa, pendentes) {
+        const linhas = pendentes.map(r => `- ${formatarData(r.dataServico)} - ${r.tipoServico || 'Serviço'} (placa ${r.placa}): R$ ${r.valor}`);
+        const total = pendentes.reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
+        return `Olá! Segue o resumo dos serviços pendentes da ${nomeEmpresa}:\n\n${linhas.join('\n')}\n\nTotal pendente: R$ ${total.toFixed(2)}`;
+    }
+
+    window.gerarCobrancaWhatsapp = function(nomeEmpresa) {
+        const dados = window.registrosGlobais || [];
+        const pendentes = dados.filter(r =>
+            (r.empresa || '').trim().toLowerCase() === nomeEmpresa.trim().toLowerCase() &&
+            r.statusPagamento === 'Pendente'
+        );
+        if (pendentes.length === 0) return;
+        const mensagem = gerarMensagemCobranca(nomeEmpresa, pendentes);
+        window.open('https://wa.me/?text=' + encodeURIComponent(mensagem), '_blank');
     }
 
     window.limparFiltroLateral = function() {
