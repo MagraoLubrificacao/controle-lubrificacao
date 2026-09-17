@@ -814,6 +814,23 @@
             margin-bottom: 12px;
         }
         .resumo-pasta .finance-item { font-size: 0.85rem; }
+        .aviso-vencimento-pasta { margin-bottom: 12px; }
+        .aviso-vencimento-pasta-item {
+            font-size: 0.8rem;
+            padding: 6px 10px;
+            border-radius: 5px;
+            margin-bottom: 6px;
+        }
+        .aviso-vencimento-pasta-item.vencido {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .aviso-vencimento-pasta-item.urgente {
+            background: rgba(234, 179, 8, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
         .lista-pendentes-pasta { margin: 10px 0; font-size: 0.82rem; }
         .pendente-item-pasta {
             display: flex;
@@ -1704,15 +1721,18 @@
                 <div class="finance-item">Total ganho: <span class="val-lucro">R$ ${totalGanho.toFixed(2)}</span></div>
                 <div class="finance-item">Total a receber: <span class="val-pendente">R$ ${totalDeve.toFixed(2)}</span></div>
             </div>
+            <div id="avisoVencimentoPastaContainer"></div>
             <div id="pendentesPastaContainer"></div>
         `;
+
+        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
+        const dataHoje = new Date();
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        renderizarAvisoVencimentoPasta(registrosDaEmpresa, ultimosVencimentos, hojePadrao);
         renderizarPendentesPasta(registrosDaEmpresa[0].empresa, registrosDaEmpresa);
 
         const corpoPasta = document.getElementById('tabelaCorpoPasta');
         corpoPasta.innerHTML = '';
-        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
-        const dataHoje = new Date();
-        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
         registrosDaEmpresa.forEach(reg => {
             corpoPasta.appendChild(montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao));
         });
@@ -1723,6 +1743,44 @@
             tiposContagemPasta[tipo] = (tiposContagemPasta[tipo] || 0) + 1;
         });
         atualizarGraficosPasta(totalGanho, totalDeve, tiposContagemPasta);
+    }
+
+    // Lista, dentro da própria pasta, quais placas daquela empresa estão vencidas/perto de
+    // vencer — reaproveita o mesmo mapa por placa já calculado (calcularUltimosVencimentosPorPlaca),
+    // só filtrando pras placas que pertencem a essa empresa.
+    function renderizarAvisoVencimentoPasta(registrosDaEmpresa, ultimosVencimentos, hojePadrao) {
+        const placasDaEmpresa = new Set(registrosDaEmpresa.map(r => r.placa));
+        const avisos = [];
+
+        const avaliar = (entry, campoData, tipoLabel, placa) => {
+            if (!entry) return;
+            const [ano, mes, dia] = entry[campoData].split('-');
+            const data = new Date(ano, mes - 1, dia);
+            const diff = Math.round((data - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (diff < 0) {
+                avisos.push({ placa, tipo: tipoLabel, texto: `vencido há ${Math.abs(diff)}d`, classe: 'vencido' });
+            } else if (diff <= 5) {
+                avisos.push({ placa, tipo: tipoLabel, texto: diff === 0 ? 'vence hoje' : `vence em ${diff}d`, classe: 'urgente' });
+            }
+        };
+
+        Object.keys(ultimosVencimentos).forEach(placa => {
+            if (!placasDaEmpresa.has(placa)) return;
+            const entry = ultimosVencimentos[placa];
+            if (entry.lub) avaliar(entry.lub, 'proximaLubrificacao', 'Lubrificação', placa);
+            if (entry.oleo) avaliar(entry.oleo, 'proximaTrocaOleo', 'Troca de Óleo', placa);
+        });
+
+        const container = document.getElementById('avisoVencimentoPastaContainer');
+        if (avisos.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = `
+            <div class="aviso-vencimento-pasta">
+                ${avisos.map(a => `<div class="aviso-vencimento-pasta-item ${a.classe}">⚠️ Placa ${escapeHtml(a.placa)} — ${escapeHtml(a.tipo)}: ${a.texto}</div>`).join('')}
+            </div>
+        `;
     }
 
     function renderizarPendentesPasta(nomeEmpresa, registrosDaEmpresa) {
