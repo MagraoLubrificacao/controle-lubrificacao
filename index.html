@@ -816,6 +816,48 @@
             color: var(--text-muted);
             font-size: 0.85rem;
         }
+        .grid-pastas {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .pasta-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: border-color 0.15s;
+        }
+        .pasta-card:hover { border-color: var(--primary); }
+        .pasta-card .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.vencido { background: var(--warning); }
+        .status-dot.urgente { background: var(--pending); }
+        .status-dot.ok { background: transparent; }
+        .btn-voltar-pasta {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .btn-voltar-pasta:hover { border-color: var(--primary); color: var(--primary); }
+        .resumo-pasta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .resumo-pasta .finance-item { font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -948,38 +990,42 @@
             <div id="comprovanteAtual" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;"></div>
         </form>
     </div>
-
-    <div class="filtros-pastas-horizontal">
-        <div class="filtros-top-row">
-            <span style="font-size: 0.85rem; font-weight: bold;">🔍 Filtros / Pastas:</span>
-            <input type="text" id="filterEmpresa" class="search-input-compact" placeholder="Buscar Empresa..." oninput="filtrarPastasEEstados()">
-            <input type="text" id="filterPlaca" class="search-input-compact" placeholder="Buscar Placa..." oninput="filtrarPastasEEstados()">
-            <select id="filterStatus" class="select-periodo" style="height: 30px;" onchange="filtrarDados()">
-                <option value="TODOS">Todos os Status</option>
-                <option value="Pendente">Apenas Pendentes</option>
-                <option value="Pago">Apenas Pagos</option>
-            </select>
-            <button class="btn-limpar-chip" onclick="limparFiltroLateral()">Limpar Filtros</button>
-        </div>
-        <div class="pastas-chips-container" id="pastasListaContainer"></div>
-    </div>
-
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Empresa</th><th>Placa</th><th>Motorista</th><th>Data</th><th>Tipo</th>
-                    <th>Descrição</th><th>Próx. Lub.</th><th>Próx. Óleo</th><th>Valor</th>
-                    <th>Status</th><th>Comp.</th><th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaCorpo"></tbody>
-        </table>
-    </div>
     </div><!-- /viewVisaoGeral -->
 
     <div id="viewPastas" class="view-secao">
-        <div class="view-placeholder">Em construção — chega na próxima etapa.</div>
+        <div id="pastasSubviewLista">
+            <div class="filtros-pastas-horizontal">
+                <div class="filtros-top-row">
+                    <span style="font-size: 0.85rem; font-weight: bold;">🔍 Buscar Pasta:</span>
+                    <input type="text" id="filterEmpresa" class="search-input-compact" placeholder="Buscar Empresa..." oninput="window.renderizarListaPastas()">
+                    <input type="text" id="filterPlaca" class="search-input-compact" placeholder="Buscar Placa..." oninput="window.renderizarListaPastas()">
+                    <select id="filterStatus" class="select-periodo" style="height: 30px;" onchange="window.renderizarListaPastas()">
+                        <option value="TODOS">Todos os Status</option>
+                        <option value="Pendente">Apenas Pendentes</option>
+                        <option value="Pago">Apenas Pagos</option>
+                    </select>
+                    <button class="btn-limpar-chip" onclick="limparFiltroLateral()">Limpar Filtros</button>
+                </div>
+            </div>
+            <div class="grid-pastas" id="gridPastas"></div>
+        </div>
+
+        <div id="pastasSubviewDetalhe" style="display: none;">
+            <button type="button" class="btn-voltar-pasta" onclick="location.hash = '#pastas'">◀ Voltar pra lista de pastas</button>
+            <div id="conteudoDetalhePasta"></div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Placa</th><th>Motorista</th><th>Data</th><th>Tipo</th>
+                            <th>Descrição</th><th>Próx. Lub.</th><th>Próx. Óleo</th><th>Valor</th>
+                            <th>Status</th><th>Comp.</th><th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCorpoPasta"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <div id="viewVencimento" class="view-secao">
@@ -1306,10 +1352,42 @@
         return mapa;
     }
 
+    function calcularStatusPorEmpresa(dados) {
+        const ultimos = calcularUltimosVencimentosPorPlaca(dados);
+        const dataHoje = new Date();
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        const statusPorEmpresa = {};
+
+        // Chave normalizada (minúsculo/sem espaço nas pontas) — a mesma empresa pode ter sido
+        // salva com variação de maiúscula/espaço em registros diferentes; sem isso, duas chaves
+        // separadas apareceriam pra "a mesma" empresa e a bolinha da lista de pastas erraria.
+        const registrarStatus = (empresa, status) => {
+            if (!empresa) return;
+            const chave = empresa.trim().toLowerCase();
+            const atual = statusPorEmpresa[chave];
+            const prioridade = { vencido: 2, urgente: 1, ok: 0 };
+            if (!atual || prioridade[status] > prioridade[atual]) statusPorEmpresa[chave] = status;
+        };
+
+        const avaliarData = (dataIso) => {
+            const [ano, mes, dia] = dataIso.split('-');
+            const data = new Date(ano, mes - 1, dia);
+            const diff = Math.round((data - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (diff < 0) return 'vencido';
+            if (diff <= 5) return 'urgente';
+            return 'ok';
+        };
+
+        Object.values(ultimos).forEach(entry => {
+            if (entry.lub) registrarStatus(entry.lub.empresa, avaliarData(entry.lub.proximaLubrificacao));
+            if (entry.oleo) registrarStatus(entry.oleo.empresa, avaliarData(entry.oleo.proximaTrocaOleo));
+        });
+
+        return statusPorEmpresa;
+    }
+
     window.renderizarTabelaCompleta = function() {
         const dados = window.registrosGlobais || [];
-        const corpo = document.getElementById('tabelaCorpo');
-        corpo.innerHTML = '';
 
         const dataHoje = new Date();
         // Lógica mais segura para garantir o "Hoje" na meia-noite sem fuso
@@ -1344,17 +1422,6 @@
             if (reg.statusPagamento === 'Pendente') totalPendenteGeral += parseFloat(reg.valor || 0);
         });
 
-        const filterEmp = document.getElementById('filterEmpresa').value.toLowerCase();
-        const filterPlac = document.getElementById('filterPlaca').value.toLowerCase();
-        const filterStatus = document.getElementById('filterStatus').value;
-
-        const dadosParaExibir = dados.filter(reg => {
-            const bateEmpresa = (reg.empresa || '').toLowerCase().includes(filterEmp);
-            const batePlaca = (reg.placa || '').toLowerCase().includes(filterPlac);
-            const bateStatus = filterStatus === "TODOS" || reg.statusPagamento === filterStatus;
-            return bateEmpresa && batePlaca && bateStatus;
-        });
-
         // Vencimento "vigente" de cada placa/tipo (sempre baseado em TODOS os registros,
         // não só nos filtrados, para o painel de alertas não sumir quando um filtro é aplicado)
         const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
@@ -1385,86 +1452,79 @@
             }
         });
 
-        dadosParaExibir.forEach(reg => {
-            const tr = document.createElement('tr');
-            let diffLubDias = null;
-            let diffOleoDias = null;
-            let alertaAtivo = false;
-
-            const entryPlaca = ultimosVencimentos[reg.placa] || {};
-            // Só é o vencimento "vigente" se este registro for o mais recente daquele tipo para a placa
-            const ehVigenteLub = !!(reg.proximaLubrificacao && entryPlaca.lub && entryPlaca.lub.idDoc === reg.idDoc);
-            const ehVigenteOleo = !!(reg.proximaTrocaOleo && entryPlaca.oleo && entryPlaca.oleo.idDoc === reg.idDoc);
-
-            if (reg.proximaLubrificacao) {
-                const [anoL, mesL, diaL] = reg.proximaLubrificacao.split('-');
-                const dataLub = new Date(anoL, mesL - 1, diaL);
-                // Math.round é mais seguro que Math.ceil para contagem exata de dias
-                diffLubDias = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
-
-                if (ehVigenteLub && diffLubDias <= 5) alertaAtivo = true;
-            }
-
-            if (reg.proximaTrocaOleo) {
-                const [anoO, mesO, diaO] = reg.proximaTrocaOleo.split('-');
-                const dataOleo = new Date(anoO, mesO - 1, diaO);
-                diffOleoDias = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
-
-                if (ehVigenteOleo && diffOleoDias <= 5) alertaAtivo = true;
-            }
-
-            if (alertaAtivo) tr.classList.add('alert-row');
-
-            const dataServicoBR = formatarData(reg.dataServico);
-            const proxLubBR = reg.proximaLubrificacao ? formatarData(reg.proximaLubrificacao) : '—';
-            const proxOleoBR = reg.proximaTrocaOleo ? formatarData(reg.proximaTrocaOleo) : '—';
-
-            const exibicaoProxLub = (ehVigenteLub && diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
-            const exibicaoProxOleo = (ehVigenteOleo && diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
-
-            // LÓGICA DO BOTÃO DA AGENDA NA TABELA
-            let dataAgenda = reg.proximaTrocaOleo || reg.proximaLubrificacao;
-            let btnAgendaHtml = '';
-            if (dataAgenda) {
-                const dataStr = dataAgenda.replace(/-/g, '');
-                const titulo = encodeURIComponent(`Revisão/Óleo - ${reg.placa} (${reg.empresa})`);
-                const detalhes = encodeURIComponent(`Fazer ${reg.tipoServico || 'serviço'} do caminhão placa ${reg.placa}.`);
-                const linkCal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalhes}`;
-                btnAgendaHtml = `<a href="${linkCal}" target="_blank" class="action-btn" title="Salvar no Google Agenda" style="text-decoration: none; font-size: 1rem;">📅</a>`;
-            }
-
-            tr.innerHTML = `
-                <td data-label="Empresa" title="${escapeHtml(reg.empresa)}"><strong>${escapeHtml(reg.empresa)}</strong></td>
-                <td data-label="Placa">${escapeHtml(reg.placa)}</td>
-                <td data-label="Motorista" title="${escapeHtml(reg.motorista)}">${escapeHtml(reg.motorista)}</td>
-                <td data-label="Data">${dataServicoBR}</td>
-                <td data-label="Tipo">${escapeHtml(reg.tipoServico || 'Lubrificação')}</td>
-                <td data-label="Descrição" class="col-descricao" title="${escapeHtml(reg.descricao || '')}">${escapeHtml(reg.descricao) || '—'}</td>
-                <td data-label="Próx. Lub.">${exibicaoProxLub}</td>
-                <td data-label="Próx. Óleo">${exibicaoProxOleo}</td>
-                <td data-label="Valor">R$ ${reg.valor}</td>
-                <td data-label="Status"><span class="badge ${reg.statusPagamento === 'Pago' ? 'badge-pago' : 'badge-pendente'}">${reg.statusPagamento}</span></td>
-                <td data-label="Comp.">
-                    ${reg.comprovanteUrl ? `<a href="${escapeHtml(reg.comprovanteUrl)}" target="_blank" class="comprovante-btn">📄 Ver</a>` : '—'}
-                </td>
-                <td data-label="Ações">
-                    <div class="flex-actions">
-                        ${btnAgendaHtml}
-                        <button type="button" class="action-btn btn-editar-acao" onclick="editarRegistro('${reg.idDoc}')" title="Editar">📝</button>
-                        <button type="button" class="action-btn btn-excluir-acao" onclick="excluirRegistro('${reg.idDoc}')" title="Excluir">🗑️</button>
-                    </div>
-                </td>
-            `;
-            corpo.appendChild(tr);
-        });
-
         document.getElementById('lucroMes').innerText = `R$ ${lucroMesSelecionado.toFixed(2)}`;
         document.getElementById('qtdServicosMes').innerText = `${qtdServicosMesSelecionado}`;
         document.getElementById('totalPendenteGeral').innerText = `R$ ${totalPendenteGeral.toFixed(2)}`;
 
         atualizarPainelAvisos(vencidosList, urgentesList);
-        renderizarSidebarPastas();
         atualizarGraficos(lucroMesSelecionado, pendenteMesSelecionado, tiposContagemMes);
+    }
+
+    // Monta o <tr> de um registro para a tabela histórica de uma pasta (sem coluna Empresa,
+    // já sabemos qual é: estamos dentro da pasta dela).
+    function montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao) {
+        let diffLubDias = null;
+        let diffOleoDias = null;
+        let alertaAtivo = false;
+
+        const entryPlaca = ultimosVencimentos[reg.placa] || {};
+        const ehVigenteLub = !!(reg.proximaLubrificacao && entryPlaca.lub && entryPlaca.lub.idDoc === reg.idDoc);
+        const ehVigenteOleo = !!(reg.proximaTrocaOleo && entryPlaca.oleo && entryPlaca.oleo.idDoc === reg.idDoc);
+
+        if (reg.proximaLubrificacao) {
+            const [anoL, mesL, diaL] = reg.proximaLubrificacao.split('-');
+            const dataLub = new Date(anoL, mesL - 1, diaL);
+            diffLubDias = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (ehVigenteLub && diffLubDias <= 5) alertaAtivo = true;
+        }
+
+        if (reg.proximaTrocaOleo) {
+            const [anoO, mesO, diaO] = reg.proximaTrocaOleo.split('-');
+            const dataOleo = new Date(anoO, mesO - 1, diaO);
+            diffOleoDias = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (ehVigenteOleo && diffOleoDias <= 5) alertaAtivo = true;
+        }
+
+        const dataServicoBR = formatarData(reg.dataServico);
+        const proxLubBR = reg.proximaLubrificacao ? formatarData(reg.proximaLubrificacao) : '—';
+        const proxOleoBR = reg.proximaTrocaOleo ? formatarData(reg.proximaTrocaOleo) : '—';
+        const exibicaoProxLub = (ehVigenteLub && diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
+        const exibicaoProxOleo = (ehVigenteOleo && diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
+
+        let dataAgenda = reg.proximaTrocaOleo || reg.proximaLubrificacao;
+        let btnAgendaHtml = '';
+        if (dataAgenda) {
+            const dataStr = dataAgenda.replace(/-/g, '');
+            const titulo = encodeURIComponent(`Revisão/Óleo - ${reg.placa} (${reg.empresa})`);
+            const detalhes = encodeURIComponent(`Fazer ${reg.tipoServico || 'serviço'} do caminhão placa ${reg.placa}.`);
+            const linkCal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalhes}`;
+            btnAgendaHtml = `<a href="${linkCal}" target="_blank" class="action-btn" title="Salvar no Google Agenda" style="text-decoration: none; font-size: 1rem;">📅</a>`;
+        }
+
+        const tr = document.createElement('tr');
+        if (alertaAtivo) tr.classList.add('alert-row');
+        tr.innerHTML = `
+            <td data-label="Placa">${escapeHtml(reg.placa)}</td>
+            <td data-label="Motorista" title="${escapeHtml(reg.motorista)}">${escapeHtml(reg.motorista)}</td>
+            <td data-label="Data">${dataServicoBR}</td>
+            <td data-label="Tipo">${escapeHtml(reg.tipoServico || 'Lubrificação')}</td>
+            <td data-label="Descrição" class="col-descricao" title="${escapeHtml(reg.descricao || '')}">${escapeHtml(reg.descricao) || '—'}</td>
+            <td data-label="Próx. Lub.">${exibicaoProxLub}</td>
+            <td data-label="Próx. Óleo">${exibicaoProxOleo}</td>
+            <td data-label="Valor">R$ ${reg.valor}</td>
+            <td data-label="Status"><span class="badge ${reg.statusPagamento === 'Pago' ? 'badge-pago' : 'badge-pendente'}">${reg.statusPagamento}</span></td>
+            <td data-label="Comp.">
+                ${reg.comprovanteUrl ? `<a href="${escapeHtml(reg.comprovanteUrl)}" target="_blank" class="comprovante-btn">📄 Ver</a>` : '—'}
+            </td>
+            <td data-label="Ações">
+                <div class="flex-actions">
+                    ${btnAgendaHtml}
+                    <button type="button" class="action-btn btn-editar-acao" onclick="editarRegistro('${reg.idDoc}')" title="Editar">📝</button>
+                    <button type="button" class="action-btn btn-excluir-acao" onclick="excluirRegistro('${reg.idDoc}')" title="Excluir">🗑️</button>
+                </div>
+            </td>
+        `;
+        return tr;
     }
 
     function atualizarPainelAvisos(vencidos, urgentes) {
@@ -1504,28 +1564,87 @@
         }
     }
 
-    function renderizarSidebarPastas() {
-        const container = document.getElementById('pastasListaContainer');
-        container.innerHTML = '';
-        const empresasSet = new Set();
-        window.registrosGlobais.forEach(reg => { if (reg.empresa) empresasSet.add(reg.empresa.trim()); });
+    window.abrirPasta = function(nomeEmpresa) {
+        location.hash = '#pasta/' + encodeURIComponent(nomeEmpresa);
+    }
 
-        if (empresasSet.size === 0) {
-            container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.75rem;">Nenhuma pasta encontrada.</span>';
+    window.renderizarListaPastas = function() {
+        const dados = window.registrosGlobais || [];
+        const grid = document.getElementById('gridPastas');
+        const empresasMap = new Map(); // chave normalizada -> nome original (primeiro visto)
+        dados.forEach(reg => {
+            if (!reg.empresa) return;
+            const chave = reg.empresa.trim().toLowerCase();
+            if (!empresasMap.has(chave)) empresasMap.set(chave, reg.empresa.trim());
+        });
+
+        const statusPorEmpresa = calcularStatusPorEmpresa(dados);
+        const filterEmp = document.getElementById('filterEmpresa').value.toLowerCase().trim();
+        const filterPlac = document.getElementById('filterPlaca').value.toLowerCase().trim();
+        const filterStatus = document.getElementById('filterStatus').value;
+
+        const empresasFiltradas = Array.from(empresasMap.values()).filter(empresaNome => {
+            const registrosDaEmpresa = dados.filter(r => (r.empresa || '').trim().toLowerCase() === empresaNome.toLowerCase());
+            const bateEmpresa = empresaNome.toLowerCase().includes(filterEmp);
+            const batePlaca = filterPlac === '' || registrosDaEmpresa.some(r => (r.placa || '').toLowerCase().includes(filterPlac));
+            const bateStatus = filterStatus === 'TODOS' || registrosDaEmpresa.some(r => r.statusPagamento === filterStatus);
+            return bateEmpresa && batePlaca && bateStatus;
+        }).sort((a, b) => a.localeCompare(b));
+
+        if (empresasFiltradas.length === 0) {
+            grid.innerHTML = '<div class="view-placeholder">Nenhuma pasta encontrada.</div>';
             return;
         }
 
-        const termoBuscaEmpresa = document.getElementById('filterEmpresa').value.toLowerCase().trim();
-        Array.from(empresasSet).sort().forEach(empresaNome => {
-            if (termoBuscaEmpresa !== "" && !empresaNome.toLowerCase().includes(termoBuscaEmpresa)) return;
-            const chip = document.createElement('div');
-            chip.className = 'pasta-chip';
-            chip.innerHTML = `📁 ${escapeHtml(empresaNome)}`;
-            chip.onclick = () => {
-                document.getElementById('filterEmpresa').value = empresaNome;
-                window.filtrarDados();
-            };
-            container.appendChild(chip);
+        grid.innerHTML = empresasFiltradas.map(empresaNome => {
+            // statusPorEmpresa é indexado por nome normalizado (minúsculo) — usar a mesma
+            // normalização aqui pra bater certinho.
+            const status = statusPorEmpresa[empresaNome.toLowerCase()] || 'ok';
+            return `
+                <div class="pasta-card" data-empresa="${escapeHtml(empresaNome)}" onclick="window.abrirPasta(this.dataset.empresa)">
+                    <span>📁 ${escapeHtml(empresaNome)}</span>
+                    <span class="status-dot ${status}" title="${status === 'vencido' ? 'Tem vencimento atrasado' : status === 'urgente' ? 'Vence em breve' : 'Em dia'}"></span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.renderizarDetalhePasta = function(empresaCodificada) {
+        const nomeEmpresa = decodeURIComponent(empresaCodificada);
+        const dados = window.registrosGlobais || [];
+        const registrosDaEmpresa = dados.filter(r => (r.empresa || '').trim().toLowerCase() === nomeEmpresa.trim().toLowerCase());
+
+        const subviewLista = document.getElementById('pastasSubviewLista');
+        const subviewDetalhe = document.getElementById('pastasSubviewDetalhe');
+
+        if (registrosDaEmpresa.length === 0) {
+            // Empresa não existe (renomeada/apagada) — volta pra lista
+            location.hash = '#pastas';
+            return;
+        }
+
+        subviewLista.style.display = 'none';
+        subviewDetalhe.style.display = 'block';
+
+        const totalGanho = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pago').reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
+        const totalDeve = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pendente').reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
+
+        document.getElementById('conteudoDetalhePasta').innerHTML = `
+            <h2 style="margin-bottom: 10px;">📁 ${escapeHtml(registrosDaEmpresa[0].empresa)}</h2>
+            <div class="resumo-pasta">
+                <div class="finance-item">Serviços feitos: <strong>${registrosDaEmpresa.length}</strong></div>
+                <div class="finance-item">Total ganho: <span class="val-lucro">R$ ${totalGanho.toFixed(2)}</span></div>
+                <div class="finance-item">Total a receber: <span class="val-pendente">R$ ${totalDeve.toFixed(2)}</span></div>
+            </div>
+        `;
+
+        const corpoPasta = document.getElementById('tabelaCorpoPasta');
+        corpoPasta.innerHTML = '';
+        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
+        const dataHoje = new Date();
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        registrosDaEmpresa.forEach(reg => {
+            corpoPasta.appendChild(montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao));
         });
     }
 
@@ -1533,8 +1652,7 @@
         document.getElementById('filterEmpresa').value = '';
         document.getElementById('filterPlaca').value = '';
         document.getElementById('filterStatus').value = 'TODOS';
-        renderizarSidebarPastas();
-        window.filtrarDados();
+        window.renderizarListaPastas();
     }
 
     window.filtrarDados = function() {
@@ -1569,8 +1687,15 @@
         if (viewAtiva === 'visao-geral' && typeof window.renderizarTabelaCompleta === 'function') {
             window.renderizarTabelaCompleta();
         }
-        if (viewAtiva === 'pastas' && typeof window.renderizarListaPastas === 'function') {
-            window.renderizarListaPastas();
+        if (viewAtiva === 'pastas') {
+            const hash = (location.hash || '').replace('#', '');
+            if (hash.startsWith('pasta/')) {
+                window.renderizarDetalhePasta(hash.substring('pasta/'.length));
+            } else {
+                document.getElementById('pastasSubviewDetalhe').style.display = 'none';
+                document.getElementById('pastasSubviewLista').style.display = 'block';
+                window.renderizarListaPastas();
+            }
         }
         if (viewAtiva === 'vencimento' && typeof window.renderizarVencimento === 'function') {
             window.renderizarVencimento();
