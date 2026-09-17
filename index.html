@@ -871,6 +871,46 @@
         }
         .btn-cobranca-whatsapp:hover { background-color: #16a34a; }
         #viewVencimento .lista-avisos { max-height: none; }
+        .btn-flutuante {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 500;
+            border-radius: 30px;
+            padding: 14px 22px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.aberto { display: flex; }
+        .modal-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 8px;
+            padding: 20px;
+            width: 100%;
+            max-width: 640px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-grupo-titulo {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+            margin: 14px 0 6px 0;
+            font-family: 'Oswald', sans-serif;
+        }
+        .modal-grupo-titulo:first-of-type { margin-top: 0; }
     </style>
 </head>
 <body>
@@ -951,43 +991,6 @@
         </div>
     </div>
 
-    <div class="card-horizontal">
-        <h2 id="tituloForm">➕ Novo Registro</h2>
-        <form id="lubForm" onsubmit="salvarRegistroFirebase(event)">
-            <input type="hidden" id="registroId" value="">
-            <div class="form-grid-horizontal">
-                <div class="form-group"><label>Empresa</label><input type="text" id="empresa" required placeholder="Ex: RodoNutri"></div>
-                <div class="form-group"><label>Placa</label><input type="text" id="placa" required placeholder="Ex: ABC1D23"></div>
-                <div class="form-group"><label>Motorista/Contato</label><input type="text" id="motorista" required placeholder="Ex: João"></div>
-                <div class="form-group"><label>Data Serviço</label><input type="date" id="dataServico" required></div>
-                <div class="form-group">
-                    <label>Tipo Serviço</label>
-                    <select id="tipoServico" onchange="atualizarCamposPrazo()" required>
-                        <option value="Lubrificação" selected>Lubrificação</option>
-                        <option value="Troca de Óleo">Troca de Óleo</option>
-                        <option value="Lubrificação + Troca de Óleo">Lubrificação + Troca de Óleo</option>
-                        <option value="Outros">Outros</option>
-                    </select>
-                </div>
-                <div class="form-group"><label>Prazo (Dias)</label><input type="number" id="prazoDias" required value="30"></div>
-                <div class="form-group" style="grid-column: span 2;"><label>Descrição do Serviço</label><input type="text" id="descricao" placeholder="Ex: Troca de óleo de motor e filtros"></div>
-                <div class="form-group"><label>Valor (R$)</label><input type="number" step="0.01" id="valor" required placeholder="1500.00"></div>
-                <div class="form-group">
-                    <label>Status Pagam.</label>
-                    <select id="statusPagamento">
-                        <option value="Pago">Pago</option>
-                        <option value="Pendente" selected>Pendente</option>
-                    </select>
-                </div>
-                <div class="form-group"><label>Comprovante</label><input type="file" id="comprovante" accept="image/*,application/pdf"></div>
-                <div class="form-group" style="flex-direction: row; gap: 4px;">
-                    <button type="submit" id="btnSalvar" style="flex: 1;">Salvar</button>
-                    <button type="button" id="btnCancelarEdicao" onclick="cancelarEdicao()" style="background-color: var(--border); display: none;">X</button>
-                </div>
-            </div>
-            <div id="comprovanteAtual" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;"></div>
-        </form>
-    </div>
     </div><!-- /viewVisaoGeral -->
 
     <div id="viewPastas" class="view-secao">
@@ -1052,6 +1055,65 @@
             </div>
         </div>
     </div>
+
+    <button type="button" id="btnNovoRegistroFloat" class="btn-flutuante" onclick="window.abrirModalNovoRegistro()">+ Novo Registro</button>
+
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h2 id="tituloForm">➕ Novo Registro</h2>
+                <button type="button" onclick="window.fecharModalNovoRegistro()" style="background:transparent; color: var(--text-muted); font-size:1.1rem; padding:0 6px;">✕</button>
+            </div>
+            <form id="lubForm" onsubmit="salvarRegistroFirebase(event)">
+                <input type="hidden" id="registroId" value="">
+
+                <h3 class="modal-grupo-titulo">Identificação</h3>
+                <div class="form-grid-horizontal">
+                    <div class="form-group"><label>Empresa</label><input type="text" id="empresa" required placeholder="Ex: RodoNutri" list="listaEmpresas"></div>
+                    <div class="form-group"><label>Placa</label><input type="text" id="placa" required placeholder="Ex: ABC1D23" list="listaPlacas"></div>
+                    <div class="form-group"><label>Motorista/Contato</label><input type="text" id="motorista" required placeholder="Ex: João"></div>
+                </div>
+
+                <h3 class="modal-grupo-titulo">Serviço</h3>
+                <div class="form-grid-horizontal">
+                    <div class="form-group"><label>Data Serviço</label><input type="date" id="dataServico" required></div>
+                    <div class="form-group">
+                        <label>Tipo Serviço</label>
+                        <select id="tipoServico" onchange="atualizarCamposPrazo()" required>
+                            <option value="" disabled selected>Selecione o tipo de serviço</option>
+                            <option value="Lubrificação">Lubrificação</option>
+                            <option value="Troca de Óleo">Troca de Óleo</option>
+                            <option value="Lubrificação + Troca de Óleo">Lubrificação + Troca de Óleo</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Prazo (Dias)</label><input type="number" id="prazoDias" required value="30"></div>
+                    <div class="form-group" style="grid-column: span 3;"><label>Descrição do Serviço</label><input type="text" id="descricao" placeholder="Ex: Troca de óleo de motor e filtros"></div>
+                </div>
+
+                <h3 class="modal-grupo-titulo">Financeiro</h3>
+                <div class="form-grid-horizontal">
+                    <div class="form-group"><label>Valor (R$)</label><input type="number" step="0.01" id="valor" required placeholder="1500.00"></div>
+                    <div class="form-group">
+                        <label>Status Pagam.</label>
+                        <select id="statusPagamento">
+                            <option value="Pago">Pago</option>
+                            <option value="Pendente" selected>Pendente</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Comprovante</label><input type="file" id="comprovante" accept="image/*,application/pdf"></div>
+                    <div class="form-group" style="flex-direction: row; gap: 4px;">
+                        <button type="submit" id="btnSalvar" style="flex: 1;">Salvar</button>
+                        <button type="button" id="btnCancelarEdicao" onclick="cancelarEdicao()" style="background-color: var(--border); display: none;">X</button>
+                    </div>
+                </div>
+                <div id="comprovanteAtual" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;"></div>
+            </form>
+        </div>
+    </div>
+
+    <datalist id="listaEmpresas"></datalist>
+    <datalist id="listaPlacas"></datalist>
 
     <div id="toastMsg" class="toast"></div>
 </div>
@@ -1338,6 +1400,7 @@
         document.getElementById('tituloForm').innerText = "📝 Editar Registro";
         document.getElementById('btnSalvar').innerText = "Atualizar";
         document.getElementById('btnCancelarEdicao').style.display = 'block';
+        window.abrirModalNovoRegistro();
     }
 
     window.removerComprovanteAtual = function() {
@@ -1356,6 +1419,15 @@
         document.getElementById('btnCancelarEdicao').style.display = 'none';
         comprovanteRemovidoNaEdicao = false;
         window.atualizarCamposPrazo();
+        document.getElementById('modalOverlay').classList.remove('aberto');
+    }
+
+    window.abrirModalNovoRegistro = function() {
+        document.getElementById('modalOverlay').classList.add('aberto');
+    }
+
+    window.fecharModalNovoRegistro = function() {
+        window.cancelarEdicao();
     }
 
     window.excluirRegistro = async function(id) {
@@ -1760,6 +1832,20 @@
         return `${dia}/${mes}/${ano}`;
     }
 
+    function atualizarDatalists() {
+        const dados = window.registrosGlobais || [];
+        const empresas = new Set();
+        const placas = new Set();
+        dados.forEach(reg => {
+            if (reg.empresa) empresas.add(reg.empresa.trim());
+            if (reg.placa) placas.add(reg.placa.trim());
+        });
+        document.getElementById('listaEmpresas').innerHTML = Array.from(empresas).sort()
+            .map(e => `<option value="${escapeHtml(e)}"></option>`).join('');
+        document.getElementById('listaPlacas').innerHTML = Array.from(placas).sort()
+            .map(p => `<option value="${escapeHtml(p)}"></option>`).join('');
+    }
+
     const VIEWS_VALIDAS = ['visao-geral', 'pastas', 'vencimento'];
 
     function obterViewAtualDoHash() {
@@ -1769,6 +1855,7 @@
     }
 
     window.renderizarViewAtual = function() {
+        atualizarDatalists();
         const viewAtiva = obterViewAtualDoHash();
 
         document.querySelectorAll('.view-secao').forEach(el => el.classList.remove('ativa'));
