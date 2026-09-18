@@ -668,6 +668,22 @@
             }
             .flex-actions { justify-content: flex-end; }
         }
+        @media (max-width: 480px) {
+            /* Em telas bem estreitas, o grid de 2-3 colunas do formulario espremia
+               campos como "Prazo (Dias)" a ponto de cortar o valor visualmente
+               (ex: "30" aparecendo como so "3"). Uma coluna por linha garante que
+               todo campo sempre tem a largura toda disponivel. */
+            .form-grid-horizontal {
+                grid-template-columns: 1fr;
+            }
+            /* O campo de Descricao usa grid-column: span 3 embutido no HTML (feito
+               pra grade de 3 colunas) - com 1 coluna so, isso confundia a grade
+               inteira da linha. Forca span 1 (precisa de !important pra vencer o
+               estilo embutido, que tem mais prioridade que uma regra normal). */
+            .form-grid-horizontal > .form-group {
+                grid-column: span 1 !important;
+            }
+        }
         .toast {
             position: fixed;
             bottom: 20px;
