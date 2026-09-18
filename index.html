@@ -41,9 +41,9 @@
                 snapshot.forEach((docSnap) => {
                     window.registrosGlobais.push({ idDoc: docSnap.id, ...docSnap.data() });
                 });
-                // Quando os dados chegarem ou mudarem, redesenha a tela
-                if (typeof window.renderizarTabelaCompleta === 'function') {
-                    window.renderizarTabelaCompleta();
+                // Quando os dados chegarem ou mudarem, redesenha a view que estiver ativa
+                if (typeof window.renderizarViewAtual === 'function') {
+                    window.renderizarViewAtual();
                 }
             });
         }
@@ -345,24 +345,6 @@
             }
         }
 
-        .card-horizontal {
-            background: var(--card-bg);
-            padding: 12px 16px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            border-top: 2px solid var(--primary);
-            margin-bottom: 12px;
-        }
-
-        .card-horizontal h2 {
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-            color: var(--text);
-            font-weight: 600;
-            font-family: 'Oswald', sans-serif;
-            letter-spacing: 0.3px;
-        }
-
         .form-grid-horizontal {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -454,32 +436,6 @@
         }
         .search-input-compact:focus {
             border-color: var(--primary);
-        }
-
-        .pastas-chips-container {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-            align-items: center;
-        }
-
-        .pasta-chip {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 4px 8px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .pasta-chip:hover, .pasta-chip.ativo {
-            border-color: var(--primary);
-            color: var(--primary);
         }
 
         .btn-limpar-chip {
@@ -781,6 +737,153 @@
         }
         .btn-logout:hover { border-color: var(--warning); color: var(--warning); }
         .header-row { display: flex; align-items: center; width: 100%; gap: 12px; }
+
+        .tabs-principais {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-link {
+            padding: 9px 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+        }
+        .tab-link:hover { color: var(--text); }
+        .tab-link.ativo {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .view-secao { display: none; }
+        .view-secao.ativa { display: block; }
+        .view-placeholder {
+            background: var(--card-bg);
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .grid-pastas {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .pasta-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: border-color 0.15s;
+        }
+        .pasta-card:hover { border-color: var(--primary); }
+        .pasta-card .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.vencido { background: var(--warning); }
+        .status-dot.urgente { background: var(--pending); }
+        .status-dot.ok { background: transparent; }
+        .btn-voltar-pasta {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .btn-voltar-pasta:hover { border-color: var(--primary); color: var(--primary); }
+        .resumo-pasta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .resumo-pasta .finance-item { font-size: 0.85rem; }
+        .aviso-vencimento-pasta { margin-bottom: 12px; }
+        .aviso-vencimento-pasta-item {
+            font-size: 0.8rem;
+            padding: 6px 10px;
+            border-radius: 5px;
+            margin-bottom: 6px;
+        }
+        .aviso-vencimento-pasta-item.vencido {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .aviso-vencimento-pasta-item.urgente {
+            background: rgba(234, 179, 8, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .lista-pendentes-pasta { margin: 10px 0; font-size: 0.82rem; }
+        .pendente-item-pasta {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+        .btn-cobranca-whatsapp {
+            background-color: #22c55e;
+            margin-top: 8px;
+        }
+        .btn-cobranca-whatsapp:hover { background-color: #16a34a; }
+        #viewVencimento .lista-avisos { max-height: none; }
+        .btn-flutuante {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 500;
+            border-radius: 30px;
+            padding: 14px 22px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.aberto { display: flex; }
+        .modal-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 8px;
+            padding: 20px;
+            width: 100%;
+            max-width: 640px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-grupo-titulo {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+            margin: 14px 0 6px 0;
+            font-family: 'Oswald', sans-serif;
+        }
+        .modal-grupo-titulo:first-of-type { margin-top: 0; }
     </style>
 </head>
 <body>
@@ -818,21 +921,13 @@
     </header>
     <div class="hazard-divider"></div>
 
-    <div class="agenda-alertas">
-        <div class="alerta-card vencido" id="cardVencidos">
-            <h3>🔴 Próximos Vencidos (Passou do prazo)</h3>
-            <div class="lista-avisos" id="listaVencidos">
-                <div style="color: var(--text-muted);">Nenhum item vencido.</div>
-            </div>
-        </div>
-        <div class="alerta-card urgente" id="cardUrgentes">
-            <h3>🟡 Vencem nos próximos 5 dias</h3>
-            <div class="lista-avisos" id="listaUrgentes">
-                <div style="color: var(--text-muted);">Nenhum vencimento próximo.</div>
-            </div>
-        </div>
-    </div>
+    <nav class="tabs-principais">
+        <a href="#visao-geral" class="tab-link" data-tab="visao-geral">Visão Geral</a>
+        <a href="#pastas" class="tab-link" data-tab="pastas">Pastas</a>
+        <a href="#vencimento" class="tab-link" data-tab="vencimento">Vencimento</a>
+    </nav>
 
+    <div id="viewVisaoGeral" class="view-secao">
     <div class="filters-panel">
         <div class="finance-summary">
             <div class="finance-group">
@@ -869,71 +964,129 @@
         </div>
     </div>
 
-    <div class="card-horizontal">
-        <h2 id="tituloForm">➕ Novo Registro</h2>
-        <form id="lubForm" onsubmit="salvarRegistroFirebase(event)">
-            <input type="hidden" id="registroId" value="">
-            <div class="form-grid-horizontal">
-                <div class="form-group"><label>Empresa</label><input type="text" id="empresa" required placeholder="Ex: RodoNutri"></div>
-                <div class="form-group"><label>Placa</label><input type="text" id="placa" required placeholder="Ex: ABC1D23"></div>
-                <div class="form-group"><label>Motorista/Contato</label><input type="text" id="motorista" required placeholder="Ex: João"></div>
-                <div class="form-group"><label>Data Serviço</label><input type="date" id="dataServico" required></div>
-                <div class="form-group">
-                    <label>Tipo Serviço</label>
-                    <select id="tipoServico" onchange="atualizarCamposPrazo()" required>
-                        <option value="Lubrificação" selected>Lubrificação</option>
-                        <option value="Troca de Óleo">Troca de Óleo</option>
-                        <option value="Lubrificação + Troca de Óleo">Lubrificação + Troca de Óleo</option>
-                        <option value="Outros">Outros</option>
+    </div><!-- /viewVisaoGeral -->
+
+    <div id="viewPastas" class="view-secao">
+        <div id="pastasSubviewLista">
+            <div class="filtros-pastas-horizontal">
+                <div class="filtros-top-row">
+                    <span style="font-size: 0.85rem; font-weight: bold;">🔍 Buscar Pasta:</span>
+                    <input type="text" id="filterEmpresa" class="search-input-compact" placeholder="Buscar Empresa..." oninput="window.renderizarListaPastas()">
+                    <input type="text" id="filterPlaca" class="search-input-compact" placeholder="Buscar Placa..." oninput="window.renderizarListaPastas()">
+                    <select id="filterStatus" class="select-periodo" style="height: 30px;" onchange="window.renderizarListaPastas()">
+                        <option value="TODOS">Todos os Status</option>
+                        <option value="Pendente">Apenas Pendentes</option>
+                        <option value="Pago">Apenas Pagos</option>
                     </select>
-                </div>
-                <div class="form-group"><label>Prazo (Dias)</label><input type="number" id="prazoDias" required value="30"></div>
-                <div class="form-group" style="grid-column: span 2;"><label>Descrição do Serviço</label><input type="text" id="descricao" placeholder="Ex: Troca de óleo de motor e filtros"></div>
-                <div class="form-group"><label>Valor (R$)</label><input type="number" step="0.01" id="valor" required placeholder="1500.00"></div>
-                <div class="form-group">
-                    <label>Status Pagam.</label>
-                    <select id="statusPagamento">
-                        <option value="Pago">Pago</option>
-                        <option value="Pendente" selected>Pendente</option>
-                    </select>
-                </div>
-                <div class="form-group"><label>Comprovante</label><input type="file" id="comprovante" accept="image/*,application/pdf"></div>
-                <div class="form-group" style="flex-direction: row; gap: 4px;">
-                    <button type="submit" id="btnSalvar" style="flex: 1;">Salvar</button>
-                    <button type="button" id="btnCancelarEdicao" onclick="cancelarEdicao()" style="background-color: var(--border); display: none;">X</button>
+                    <button class="btn-limpar-chip" onclick="limparFiltroLateral()">Limpar Filtros</button>
                 </div>
             </div>
-            <div id="comprovanteAtual" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;"></div>
-        </form>
-    </div>
-
-    <div class="filtros-pastas-horizontal">
-        <div class="filtros-top-row">
-            <span style="font-size: 0.85rem; font-weight: bold;">🔍 Filtros / Pastas:</span>
-            <input type="text" id="filterEmpresa" class="search-input-compact" placeholder="Buscar Empresa..." oninput="filtrarPastasEEstados()">
-            <input type="text" id="filterPlaca" class="search-input-compact" placeholder="Buscar Placa..." oninput="filtrarPastasEEstados()">
-            <select id="filterStatus" class="select-periodo" style="height: 30px;" onchange="filtrarDados()">
-                <option value="TODOS">Todos os Status</option>
-                <option value="Pendente">Apenas Pendentes</option>
-                <option value="Pago">Apenas Pagos</option>
-            </select>
-            <button class="btn-limpar-chip" onclick="limparFiltroLateral()">Limpar Filtros</button>
+            <div class="grid-pastas" id="gridPastas"></div>
         </div>
-        <div class="pastas-chips-container" id="pastasListaContainer"></div>
+
+        <div id="pastasSubviewDetalhe" style="display: none;">
+            <button type="button" class="btn-voltar-pasta" onclick="location.hash = '#pastas'">◀ Voltar pra lista de pastas</button>
+            <div id="conteudoDetalhePasta"></div>
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>📊 Pago x Pendente (histórico da pasta)</h3>
+                    <div class="chart-wrapper"><canvas id="chartBarrasPasta"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3>🥧 Tipos de Serviço (histórico da pasta)</h3>
+                    <div class="chart-wrapper"><canvas id="chartPizzaPasta"></canvas></div>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Placa</th><th>Motorista</th><th>Data</th><th>Tipo</th>
+                            <th>Descrição</th><th>Próx. Lub.</th><th>Próx. Óleo</th><th>Valor</th>
+                            <th>Status</th><th>Comp.</th><th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaCorpoPasta"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Empresa</th><th>Placa</th><th>Motorista</th><th>Data</th><th>Tipo</th>
-                    <th>Descrição</th><th>Próx. Lub.</th><th>Próx. Óleo</th><th>Valor</th>
-                    <th>Status</th><th>Comp.</th><th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaCorpo"></tbody>
-        </table>
+    <div id="viewVencimento" class="view-secao">
+        <div class="agenda-alertas">
+            <div class="alerta-card vencido" id="cardVencidos">
+                <h3>🔴 Vencidos (Passou do prazo)</h3>
+                <div class="lista-avisos" id="listaVencidos">
+                    <div style="color: var(--text-muted);">Nenhum item vencido.</div>
+                </div>
+            </div>
+            <div class="alerta-card urgente" id="cardUrgentes">
+                <h3>🟡 Vencem nos próximos 5 dias</h3>
+                <div class="lista-avisos" id="listaUrgentes">
+                    <div style="color: var(--text-muted);">Nenhum vencimento próximo.</div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <button type="button" id="btnNovoRegistroFloat" class="btn-flutuante" onclick="window.abrirModalNovoRegistro()">+ Novo Registro</button>
+
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h2 id="tituloForm">➕ Novo Registro</h2>
+                <button type="button" onclick="window.fecharModalNovoRegistro()" style="background:transparent; color: var(--text-muted); font-size:1.1rem; padding:0 6px;">✕</button>
+            </div>
+            <form id="lubForm" onsubmit="salvarRegistroFirebase(event)">
+                <input type="hidden" id="registroId" value="">
+
+                <h3 class="modal-grupo-titulo">Identificação</h3>
+                <div class="form-grid-horizontal">
+                    <div class="form-group"><label>Empresa</label><input type="text" id="empresa" required placeholder="Ex: RodoNutri" list="listaEmpresas"></div>
+                    <div class="form-group"><label>Placa</label><input type="text" id="placa" required placeholder="Ex: ABC1D23" list="listaPlacas"></div>
+                    <div class="form-group"><label>Motorista/Contato</label><input type="text" id="motorista" required placeholder="Ex: João"></div>
+                </div>
+
+                <h3 class="modal-grupo-titulo">Serviço</h3>
+                <div class="form-grid-horizontal">
+                    <div class="form-group"><label>Data Serviço</label><input type="date" id="dataServico" required></div>
+                    <div class="form-group">
+                        <label>Tipo Serviço</label>
+                        <select id="tipoServico" onchange="atualizarCamposPrazo()" required>
+                            <option value="" disabled selected>Selecione o tipo de serviço</option>
+                            <option value="Lubrificação">Lubrificação</option>
+                            <option value="Troca de Óleo">Troca de Óleo</option>
+                            <option value="Lubrificação + Troca de Óleo">Lubrificação + Troca de Óleo</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Prazo (Dias)</label><input type="number" id="prazoDias" required value="30"></div>
+                    <div class="form-group" style="grid-column: span 3;"><label>Descrição do Serviço</label><input type="text" id="descricao" placeholder="Ex: Troca de óleo de motor e filtros"></div>
+                </div>
+
+                <h3 class="modal-grupo-titulo">Financeiro</h3>
+                <div class="form-grid-horizontal">
+                    <div class="form-group"><label>Valor (R$)</label><input type="number" step="0.01" id="valor" required placeholder="1500.00"></div>
+                    <div class="form-group">
+                        <label>Status Pagam.</label>
+                        <select id="statusPagamento">
+                            <option value="Pago">Pago</option>
+                            <option value="Pendente" selected>Pendente</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Comprovante</label><input type="file" id="comprovante" accept="image/*,application/pdf"></div>
+                    <div class="form-group" style="flex-direction: row; gap: 4px;">
+                        <button type="submit" id="btnSalvar" style="flex: 1;">Salvar</button>
+                        <button type="button" id="btnCancelarEdicao" onclick="cancelarEdicao()" style="background-color: var(--border); display: none;">X</button>
+                    </div>
+                </div>
+                <div id="comprovanteAtual" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;"></div>
+            </form>
+        </div>
+    </div>
+
+    <datalist id="listaEmpresas"></datalist>
+    <datalist id="listaPlacas"></datalist>
 
     <div id="toastMsg" class="toast"></div>
 </div>
@@ -949,11 +1102,7 @@
     let chartCaixaInstance = null;
     let chartTiposInstance = null;
 
-    function atualizarGraficos(totalPago, totalPendente, contagemTipos) {
-        const ctxCaixa = document.getElementById('chartBarrasMensal');
-        const ctxTipos = document.getElementById('chartPizzaServicos');
-
-        // Gráfico de Fluxo de Caixa (Pago x Pendente do mês selecionado)
+    function construirDadosGraficos(totalPago, totalPendente, contagemTipos) {
         const dataCaixa = {
             labels: ['Recebido (Pago)', 'A Receber (Pendente)'],
             datasets: [{
@@ -964,30 +1113,9 @@
             }]
         };
 
-        if (chartCaixaInstance) {
-            chartCaixaInstance.data = dataCaixa;
-            chartCaixaInstance.update();
-        } else {
-            chartCaixaInstance = new Chart(ctxCaixa, {
-                type: 'bar',
-                data: dataCaixa,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: '#8890a0', font: { size: 11 } }, grid: { display: false } },
-                        y: { beginAtZero: true, ticks: { color: '#8890a0', font: { family: 'monospace', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
-                    }
-                }
-            });
-        }
-
-        // Gráfico de Tipos de Serviço (contagem do mês selecionado)
         const labelsTipos = Object.keys(contagemTipos);
         const valoresTipos = Object.values(contagemTipos);
         const coresTipos = ['#f5a623', '#38bdf8', '#8890a0', '#22c55e'];
-
         const dataTipos = {
             labels: labelsTipos,
             datasets: [{
@@ -998,25 +1126,73 @@
             }]
         };
 
+        return { dataCaixa, dataTipos };
+    }
+
+    const OPCOES_GRAFICO_BARRAS = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { color: '#8890a0', font: { size: 11 } }, grid: { display: false } },
+            y: { beginAtZero: true, ticks: { color: '#8890a0', font: { family: 'monospace', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        }
+    };
+
+    const OPCOES_GRAFICO_PIZZA = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { color: '#8890a0', font: { size: 11 }, boxWidth: 10, padding: 10 }
+            }
+        }
+    };
+
+    function atualizarGraficos(totalPago, totalPendente, contagemTipos) {
+        const ctxCaixa = document.getElementById('chartBarrasMensal');
+        const ctxTipos = document.getElementById('chartPizzaServicos');
+        const { dataCaixa, dataTipos } = construirDadosGraficos(totalPago, totalPendente, contagemTipos);
+
+        if (chartCaixaInstance) {
+            chartCaixaInstance.data = dataCaixa;
+            chartCaixaInstance.update();
+        } else {
+            chartCaixaInstance = new Chart(ctxCaixa, { type: 'bar', data: dataCaixa, options: OPCOES_GRAFICO_BARRAS });
+        }
+
         if (chartTiposInstance) {
             chartTiposInstance.data = dataTipos;
             chartTiposInstance.update();
         } else {
-            chartTiposInstance = new Chart(ctxTipos, {
-                type: 'doughnut',
-                data: dataTipos,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '65%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#8890a0', font: { size: 11 }, boxWidth: 10, padding: 10 }
-                        }
-                    }
-                }
-            });
+            chartTiposInstance = new Chart(ctxTipos, { type: 'doughnut', data: dataTipos, options: OPCOES_GRAFICO_PIZZA });
+        }
+    }
+
+    let chartCaixaPastaInstance = null;
+    let chartTiposPastaInstance = null;
+
+    function atualizarGraficosPasta(totalPago, totalPendente, contagemTipos) {
+        const ctxCaixa = document.getElementById('chartBarrasPasta');
+        const ctxTipos = document.getElementById('chartPizzaPasta');
+        const { dataCaixa, dataTipos } = construirDadosGraficos(totalPago, totalPendente, contagemTipos);
+
+        // Mesmos 2 canvases sempre reaproveitados ao trocar de empresa — nunca cria um Chart
+        // novo em cima de um canvas que já tem instância ativa (evita "Canvas is already in use").
+        if (chartCaixaPastaInstance) {
+            chartCaixaPastaInstance.data = dataCaixa;
+            chartCaixaPastaInstance.update();
+        } else {
+            chartCaixaPastaInstance = new Chart(ctxCaixa, { type: 'bar', data: dataCaixa, options: OPCOES_GRAFICO_BARRAS });
+        }
+
+        if (chartTiposPastaInstance) {
+            chartTiposPastaInstance.data = dataTipos;
+            chartTiposPastaInstance.update();
+        } else {
+            chartTiposPastaInstance = new Chart(ctxTipos, { type: 'doughnut', data: dataTipos, options: OPCOES_GRAFICO_PIZZA });
         }
     }
 
@@ -1197,6 +1373,7 @@
         document.getElementById('tituloForm').innerText = "📝 Editar Registro";
         document.getElementById('btnSalvar').innerText = "Atualizar";
         document.getElementById('btnCancelarEdicao').style.display = 'block';
+        window.abrirModalNovoRegistro();
     }
 
     window.removerComprovanteAtual = function() {
@@ -1215,6 +1392,15 @@
         document.getElementById('btnCancelarEdicao').style.display = 'none';
         comprovanteRemovidoNaEdicao = false;
         window.atualizarCamposPrazo();
+        document.getElementById('modalOverlay').classList.remove('aberto');
+    }
+
+    window.abrirModalNovoRegistro = function() {
+        document.getElementById('modalOverlay').classList.add('aberto');
+    }
+
+    window.fecharModalNovoRegistro = function() {
+        window.cancelarEdicao();
     }
 
     window.excluirRegistro = async function(id) {
@@ -1225,10 +1411,6 @@
                 alert("Erro ao excluir: " + error.message);
             }
         }
-    }
-
-    window.filtrarPastasEEstados = function() {
-        window.renderizarTabelaCompleta();
     }
 
     function calcularUltimosVencimentosPorPlaca(dados) {
@@ -1255,20 +1437,46 @@
         return mapa;
     }
 
-    window.renderizarTabelaCompleta = function() {
-        const dados = window.registrosGlobais || [];
-        const corpo = document.getElementById('tabelaCorpo');
-        corpo.innerHTML = '';
-
+    function calcularStatusPorEmpresa(dados) {
+        const ultimos = calcularUltimosVencimentosPorPlaca(dados);
         const dataHoje = new Date();
-        // Lógica mais segura para garantir o "Hoje" na meia-noite sem fuso
         const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        const statusPorEmpresa = {};
+
+        // Chave normalizada (minúsculo/sem espaço nas pontas) — a mesma empresa pode ter sido
+        // salva com variação de maiúscula/espaço em registros diferentes; sem isso, duas chaves
+        // separadas apareceriam pra "a mesma" empresa e a bolinha da lista de pastas erraria.
+        const registrarStatus = (empresa, status) => {
+            if (!empresa) return;
+            const chave = empresa.trim().toLowerCase();
+            const atual = statusPorEmpresa[chave];
+            const prioridade = { vencido: 2, urgente: 1, ok: 0 };
+            if (!atual || prioridade[status] > prioridade[atual]) statusPorEmpresa[chave] = status;
+        };
+
+        const avaliarData = (dataIso) => {
+            const [ano, mes, dia] = dataIso.split('-');
+            const data = new Date(ano, mes - 1, dia);
+            const diff = Math.round((data - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (diff < 0) return 'vencido';
+            if (diff <= 5) return 'urgente';
+            return 'ok';
+        };
+
+        Object.values(ultimos).forEach(entry => {
+            if (entry.lub) registrarStatus(entry.lub.empresa, avaliarData(entry.lub.proximaLubrificacao));
+            if (entry.oleo) registrarStatus(entry.oleo.empresa, avaliarData(entry.oleo.proximaTrocaOleo));
+        });
+
+        return statusPorEmpresa;
+    }
+
+    window.renderizarVisaoGeral = function() {
+        const dados = window.registrosGlobais || [];
 
         const mesSelecionado = parseInt(document.getElementById('selectMes').value);
         const anoSelecionado = parseInt(document.getElementById('selectAno').value);
 
-        let vencidosList = [];
-        let urgentesList = [];
         let totalPendenteGeral = 0;
         let lucroMesSelecionado = 0;
         let pendenteMesSelecionado = 0;
@@ -1293,127 +1501,78 @@
             if (reg.statusPagamento === 'Pendente') totalPendenteGeral += parseFloat(reg.valor || 0);
         });
 
-        const filterEmp = document.getElementById('filterEmpresa').value.toLowerCase();
-        const filterPlac = document.getElementById('filterPlaca').value.toLowerCase();
-        const filterStatus = document.getElementById('filterStatus').value;
-
-        const dadosParaExibir = dados.filter(reg => {
-            const bateEmpresa = (reg.empresa || '').toLowerCase().includes(filterEmp);
-            const batePlaca = (reg.placa || '').toLowerCase().includes(filterPlac);
-            const bateStatus = filterStatus === "TODOS" || reg.statusPagamento === filterStatus;
-            return bateEmpresa && batePlaca && bateStatus;
-        });
-
-        // Vencimento "vigente" de cada placa/tipo (sempre baseado em TODOS os registros,
-        // não só nos filtrados, para o painel de alertas não sumir quando um filtro é aplicado)
-        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
-
-        Object.keys(ultimosVencimentos).forEach(placaKey => {
-            const entry = ultimosVencimentos[placaKey];
-
-            if (entry.lub) {
-                const [anoL, mesL, diaL] = entry.lub.proximaLubrificacao.split('-');
-                const dataLub = new Date(anoL, mesL - 1, diaL);
-                const diff = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
-                if (diff < 0) {
-                    vencidosList.push({ idDoc: entry.lub.idDoc, placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: Math.abs(diff) });
-                } else if (diff <= 5) {
-                    urgentesList.push({ idDoc: entry.lub.idDoc, placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: diff });
-                }
-            }
-
-            if (entry.oleo) {
-                const [anoO, mesO, diaO] = entry.oleo.proximaTrocaOleo.split('-');
-                const dataOleo = new Date(anoO, mesO - 1, diaO);
-                const diff = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
-                if (diff < 0) {
-                    vencidosList.push({ idDoc: entry.oleo.idDoc, placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: Math.abs(diff) });
-                } else if (diff <= 5) {
-                    urgentesList.push({ idDoc: entry.oleo.idDoc, placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: diff });
-                }
-            }
-        });
-
-        dadosParaExibir.forEach(reg => {
-            const tr = document.createElement('tr');
-            let diffLubDias = null;
-            let diffOleoDias = null;
-            let alertaAtivo = false;
-
-            const entryPlaca = ultimosVencimentos[reg.placa] || {};
-            // Só é o vencimento "vigente" se este registro for o mais recente daquele tipo para a placa
-            const ehVigenteLub = !!(reg.proximaLubrificacao && entryPlaca.lub && entryPlaca.lub.idDoc === reg.idDoc);
-            const ehVigenteOleo = !!(reg.proximaTrocaOleo && entryPlaca.oleo && entryPlaca.oleo.idDoc === reg.idDoc);
-
-            if (reg.proximaLubrificacao) {
-                const [anoL, mesL, diaL] = reg.proximaLubrificacao.split('-');
-                const dataLub = new Date(anoL, mesL - 1, diaL);
-                // Math.round é mais seguro que Math.ceil para contagem exata de dias
-                diffLubDias = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
-
-                if (ehVigenteLub && diffLubDias <= 5) alertaAtivo = true;
-            }
-
-            if (reg.proximaTrocaOleo) {
-                const [anoO, mesO, diaO] = reg.proximaTrocaOleo.split('-');
-                const dataOleo = new Date(anoO, mesO - 1, diaO);
-                diffOleoDias = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
-
-                if (ehVigenteOleo && diffOleoDias <= 5) alertaAtivo = true;
-            }
-
-            if (alertaAtivo) tr.classList.add('alert-row');
-
-            const dataServicoBR = formatarData(reg.dataServico);
-            const proxLubBR = reg.proximaLubrificacao ? formatarData(reg.proximaLubrificacao) : '—';
-            const proxOleoBR = reg.proximaTrocaOleo ? formatarData(reg.proximaTrocaOleo) : '—';
-
-            const exibicaoProxLub = (ehVigenteLub && diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
-            const exibicaoProxOleo = (ehVigenteOleo && diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
-
-            // LÓGICA DO BOTÃO DA AGENDA NA TABELA
-            let dataAgenda = reg.proximaTrocaOleo || reg.proximaLubrificacao;
-            let btnAgendaHtml = '';
-            if (dataAgenda) {
-                const dataStr = dataAgenda.replace(/-/g, '');
-                const titulo = encodeURIComponent(`Revisão/Óleo - ${reg.placa} (${reg.empresa})`);
-                const detalhes = encodeURIComponent(`Fazer ${reg.tipoServico || 'serviço'} do caminhão placa ${reg.placa}.`);
-                const linkCal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalhes}`;
-                btnAgendaHtml = `<a href="${linkCal}" target="_blank" class="action-btn" title="Salvar no Google Agenda" style="text-decoration: none; font-size: 1rem;">📅</a>`;
-            }
-
-            tr.innerHTML = `
-                <td data-label="Empresa" title="${escapeHtml(reg.empresa)}"><strong>${escapeHtml(reg.empresa)}</strong></td>
-                <td data-label="Placa">${escapeHtml(reg.placa)}</td>
-                <td data-label="Motorista" title="${escapeHtml(reg.motorista)}">${escapeHtml(reg.motorista)}</td>
-                <td data-label="Data">${dataServicoBR}</td>
-                <td data-label="Tipo">${escapeHtml(reg.tipoServico || 'Lubrificação')}</td>
-                <td data-label="Descrição" class="col-descricao" title="${escapeHtml(reg.descricao || '')}">${escapeHtml(reg.descricao) || '—'}</td>
-                <td data-label="Próx. Lub.">${exibicaoProxLub}</td>
-                <td data-label="Próx. Óleo">${exibicaoProxOleo}</td>
-                <td data-label="Valor">R$ ${reg.valor}</td>
-                <td data-label="Status"><span class="badge ${reg.statusPagamento === 'Pago' ? 'badge-pago' : 'badge-pendente'}">${reg.statusPagamento}</span></td>
-                <td data-label="Comp.">
-                    ${reg.comprovanteUrl ? `<a href="${escapeHtml(reg.comprovanteUrl)}" target="_blank" class="comprovante-btn">📄 Ver</a>` : '—'}
-                </td>
-                <td data-label="Ações">
-                    <div class="flex-actions">
-                        ${btnAgendaHtml}
-                        <button type="button" class="action-btn btn-editar-acao" onclick="editarRegistro('${reg.idDoc}')" title="Editar">📝</button>
-                        <button type="button" class="action-btn btn-excluir-acao" onclick="excluirRegistro('${reg.idDoc}')" title="Excluir">🗑️</button>
-                    </div>
-                </td>
-            `;
-            corpo.appendChild(tr);
-        });
-
         document.getElementById('lucroMes').innerText = `R$ ${lucroMesSelecionado.toFixed(2)}`;
         document.getElementById('qtdServicosMes').innerText = `${qtdServicosMesSelecionado}`;
         document.getElementById('totalPendenteGeral').innerText = `R$ ${totalPendenteGeral.toFixed(2)}`;
 
-        atualizarPainelAvisos(vencidosList, urgentesList);
-        renderizarSidebarPastas();
         atualizarGraficos(lucroMesSelecionado, pendenteMesSelecionado, tiposContagemMes);
+    }
+
+    // Monta o <tr> de um registro para a tabela histórica de uma pasta (sem coluna Empresa,
+    // já sabemos qual é: estamos dentro da pasta dela).
+    function montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao) {
+        let diffLubDias = null;
+        let diffOleoDias = null;
+        let alertaAtivo = false;
+
+        const entryPlaca = ultimosVencimentos[reg.placa] || {};
+        const ehVigenteLub = !!(reg.proximaLubrificacao && entryPlaca.lub && entryPlaca.lub.idDoc === reg.idDoc);
+        const ehVigenteOleo = !!(reg.proximaTrocaOleo && entryPlaca.oleo && entryPlaca.oleo.idDoc === reg.idDoc);
+
+        if (reg.proximaLubrificacao) {
+            const [anoL, mesL, diaL] = reg.proximaLubrificacao.split('-');
+            const dataLub = new Date(anoL, mesL - 1, diaL);
+            diffLubDias = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (ehVigenteLub && diffLubDias <= 5) alertaAtivo = true;
+        }
+
+        if (reg.proximaTrocaOleo) {
+            const [anoO, mesO, diaO] = reg.proximaTrocaOleo.split('-');
+            const dataOleo = new Date(anoO, mesO - 1, diaO);
+            diffOleoDias = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (ehVigenteOleo && diffOleoDias <= 5) alertaAtivo = true;
+        }
+
+        const dataServicoBR = formatarData(reg.dataServico);
+        const proxLubBR = reg.proximaLubrificacao ? formatarData(reg.proximaLubrificacao) : '—';
+        const proxOleoBR = reg.proximaTrocaOleo ? formatarData(reg.proximaTrocaOleo) : '—';
+        const exibicaoProxLub = (ehVigenteLub && diffLubDias !== null && diffLubDias <= 5) ? `<span class="alert-text">⚠️ ${proxLubBR}</span>` : proxLubBR;
+        const exibicaoProxOleo = (ehVigenteOleo && diffOleoDias !== null && diffOleoDias <= 5) ? `<span class="alert-text">⚠️ ${proxOleoBR}</span>` : proxOleoBR;
+
+        let dataAgenda = reg.proximaTrocaOleo || reg.proximaLubrificacao;
+        let btnAgendaHtml = '';
+        if (dataAgenda) {
+            const dataStr = dataAgenda.replace(/-/g, '');
+            const titulo = encodeURIComponent(`Revisão/Óleo - ${reg.placa} (${reg.empresa})`);
+            const detalhes = encodeURIComponent(`Fazer ${reg.tipoServico || 'serviço'} do caminhão placa ${reg.placa}.`);
+            const linkCal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataStr}/${dataStr}&details=${detalhes}`;
+            btnAgendaHtml = `<a href="${linkCal}" target="_blank" class="action-btn" title="Salvar no Google Agenda" style="text-decoration: none; font-size: 1rem;">📅</a>`;
+        }
+
+        const tr = document.createElement('tr');
+        if (alertaAtivo) tr.classList.add('alert-row');
+        tr.innerHTML = `
+            <td data-label="Placa">${escapeHtml(reg.placa)}</td>
+            <td data-label="Motorista" title="${escapeHtml(reg.motorista)}">${escapeHtml(reg.motorista)}</td>
+            <td data-label="Data">${dataServicoBR}</td>
+            <td data-label="Tipo">${escapeHtml(reg.tipoServico || 'Lubrificação')}</td>
+            <td data-label="Descrição" class="col-descricao" title="${escapeHtml(reg.descricao || '')}">${escapeHtml(reg.descricao) || '—'}</td>
+            <td data-label="Próx. Lub.">${exibicaoProxLub}</td>
+            <td data-label="Próx. Óleo">${exibicaoProxOleo}</td>
+            <td data-label="Valor">R$ ${reg.valor}</td>
+            <td data-label="Status"><span class="badge ${reg.statusPagamento === 'Pago' ? 'badge-pago' : 'badge-pendente'}">${reg.statusPagamento}</span></td>
+            <td data-label="Comp.">
+                ${reg.comprovanteUrl ? `<a href="${escapeHtml(reg.comprovanteUrl)}" target="_blank" class="comprovante-btn">📄 Ver</a>` : '—'}
+            </td>
+            <td data-label="Ações">
+                <div class="flex-actions">
+                    ${btnAgendaHtml}
+                    <button type="button" class="action-btn btn-editar-acao" onclick="editarRegistro('${reg.idDoc}')" title="Editar">📝</button>
+                    <button type="button" class="action-btn btn-excluir-acao" onclick="excluirRegistro('${reg.idDoc}')" title="Excluir">🗑️</button>
+                </div>
+            </td>
+        `;
+        return tr;
     }
 
     function atualizarPainelAvisos(vencidos, urgentes) {
@@ -1431,9 +1590,9 @@
             listaVencidos.innerHTML = '<div style="color: var(--text-muted);">Nenhum item vencido.</div>';
         } else {
             listaVencidos.innerHTML = vencidos.map(item => `
-                <div class="aviso-item">
+                <div class="aviso-item" style="cursor:pointer;" data-empresa="${escapeHtml(item.empresa)}" onclick="window.abrirPasta(this.dataset.empresa)">
                     <span>⚠️ <strong>${escapeHtml(item.placa)}</strong> (${escapeHtml(item.empresa)}) - <span style="color: #f87171;">${escapeHtml(item.tipo)}</span> (${item.dias}d)</span>
-                    <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google">📅 Add Agenda</a>
+                    <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google" onclick="event.stopPropagation()">📅 Add Agenda</a>
                 </div>
             `).join('');
         }
@@ -1444,50 +1603,237 @@
             listaUrgentes.innerHTML = urgentes.map(item => {
                 let textoDias = item.dias === 0 ? "Vence hoje!" : `Vence em ${item.dias}d`;
                 return `
-                    <div class="aviso-item">
+                    <div class="aviso-item" style="cursor:pointer;" data-empresa="${escapeHtml(item.empresa)}" onclick="window.abrirPasta(this.dataset.empresa)">
                         <span>📅 <strong>${escapeHtml(item.placa)}</strong> (${escapeHtml(item.empresa)}) - <span style="color: #fbbf24;">${escapeHtml(item.tipo)}</span>: ${textoDias}</span>
-                        <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google">📅 Add Agenda</a>
+                        <a href="${linkGoogleCalendar(item)}" target="_blank" class="btn-agenda-rapida" title="Adicionar à Agenda do Google" onclick="event.stopPropagation()">📅 Add Agenda</a>
                     </div>
                 `;
             }).join('');
         }
     }
 
-    function renderizarSidebarPastas() {
-        const container = document.getElementById('pastasListaContainer');
-        container.innerHTML = '';
-        const empresasSet = new Set();
-        window.registrosGlobais.forEach(reg => { if (reg.empresa) empresasSet.add(reg.empresa.trim()); });
+    window.renderizarVencimento = function() {
+        const dados = window.registrosGlobais || [];
+        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
+        const dataHoje = new Date();
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        let vencidosList = [];
+        let urgentesList = [];
 
-        if (empresasSet.size === 0) {
-            container.innerHTML = '<span style="color: var(--text-muted); font-size: 0.75rem;">Nenhuma pasta encontrada.</span>';
+        Object.keys(ultimosVencimentos).forEach(placaKey => {
+            const entry = ultimosVencimentos[placaKey];
+
+            if (entry.lub) {
+                const [anoL, mesL, diaL] = entry.lub.proximaLubrificacao.split('-');
+                const dataLub = new Date(anoL, mesL - 1, diaL);
+                const diff = Math.round((dataLub - hojePadrao) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    vencidosList.push({ placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: Math.abs(diff) });
+                } else if (diff <= 5) {
+                    urgentesList.push({ placa: entry.lub.placa, empresa: entry.lub.empresa, tipo: 'Lubrificação', data: entry.lub.proximaLubrificacao, dias: diff });
+                }
+            }
+
+            if (entry.oleo) {
+                const [anoO, mesO, diaO] = entry.oleo.proximaTrocaOleo.split('-');
+                const dataOleo = new Date(anoO, mesO - 1, diaO);
+                const diff = Math.round((dataOleo - hojePadrao) / (1000 * 60 * 60 * 24));
+                if (diff < 0) {
+                    vencidosList.push({ placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: Math.abs(diff) });
+                } else if (diff <= 5) {
+                    urgentesList.push({ placa: entry.oleo.placa, empresa: entry.oleo.empresa, tipo: 'Troca de Óleo', data: entry.oleo.proximaTrocaOleo, dias: diff });
+                }
+            }
+        });
+
+        atualizarPainelAvisos(vencidosList, urgentesList);
+    }
+
+    window.abrirPasta = function(nomeEmpresa) {
+        location.hash = '#pasta/' + encodeURIComponent(nomeEmpresa);
+    }
+
+    window.renderizarListaPastas = function() {
+        const dados = window.registrosGlobais || [];
+        const grid = document.getElementById('gridPastas');
+        const empresasMap = new Map(); // chave normalizada -> nome original (primeiro visto)
+        dados.forEach(reg => {
+            if (!reg.empresa) return;
+            const chave = reg.empresa.trim().toLowerCase();
+            if (!empresasMap.has(chave)) empresasMap.set(chave, reg.empresa.trim());
+        });
+
+        const statusPorEmpresa = calcularStatusPorEmpresa(dados);
+        const filterEmp = document.getElementById('filterEmpresa').value.toLowerCase().trim();
+        const filterPlac = document.getElementById('filterPlaca').value.toLowerCase().trim();
+        const filterStatus = document.getElementById('filterStatus').value;
+
+        const empresasFiltradas = Array.from(empresasMap.values()).filter(empresaNome => {
+            const registrosDaEmpresa = dados.filter(r => (r.empresa || '').trim().toLowerCase() === empresaNome.toLowerCase());
+            const bateEmpresa = empresaNome.toLowerCase().includes(filterEmp);
+            const batePlaca = filterPlac === '' || registrosDaEmpresa.some(r => (r.placa || '').toLowerCase().includes(filterPlac));
+            const bateStatus = filterStatus === 'TODOS' || registrosDaEmpresa.some(r => r.statusPagamento === filterStatus);
+            return bateEmpresa && batePlaca && bateStatus;
+        }).sort((a, b) => a.localeCompare(b));
+
+        if (empresasFiltradas.length === 0) {
+            grid.innerHTML = '<div class="view-placeholder">Nenhuma pasta encontrada.</div>';
             return;
         }
 
-        const termoBuscaEmpresa = document.getElementById('filterEmpresa').value.toLowerCase().trim();
-        Array.from(empresasSet).sort().forEach(empresaNome => {
-            if (termoBuscaEmpresa !== "" && !empresaNome.toLowerCase().includes(termoBuscaEmpresa)) return;
-            const chip = document.createElement('div');
-            chip.className = 'pasta-chip';
-            chip.innerHTML = `📁 ${escapeHtml(empresaNome)}`;
-            chip.onclick = () => {
-                document.getElementById('filterEmpresa').value = empresaNome;
-                window.filtrarDados();
-            };
-            container.appendChild(chip);
+        grid.innerHTML = empresasFiltradas.map(empresaNome => {
+            // statusPorEmpresa é indexado por nome normalizado (minúsculo) — usar a mesma
+            // normalização aqui pra bater certinho.
+            const status = statusPorEmpresa[empresaNome.toLowerCase()] || 'ok';
+            return `
+                <div class="pasta-card" data-empresa="${escapeHtml(empresaNome)}" onclick="window.abrirPasta(this.dataset.empresa)">
+                    <span>📁 ${escapeHtml(empresaNome)}</span>
+                    <span class="status-dot ${status}" title="${status === 'vencido' ? 'Tem vencimento atrasado' : status === 'urgente' ? 'Vence em breve' : 'Em dia'}"></span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.renderizarDetalhePasta = function(empresaCodificada) {
+        const nomeEmpresa = decodeURIComponent(empresaCodificada);
+        const dados = window.registrosGlobais || [];
+        const registrosDaEmpresa = dados.filter(r => (r.empresa || '').trim().toLowerCase() === nomeEmpresa.trim().toLowerCase());
+
+        const subviewLista = document.getElementById('pastasSubviewLista');
+        const subviewDetalhe = document.getElementById('pastasSubviewDetalhe');
+
+        if (registrosDaEmpresa.length === 0) {
+            // Empresa não existe (renomeada/apagada) — volta pra lista
+            location.hash = '#pastas';
+            return;
+        }
+
+        subviewLista.style.display = 'none';
+        subviewDetalhe.style.display = 'block';
+
+        const totalGanho = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pago').reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
+        const totalDeve = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pendente').reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
+
+        document.getElementById('conteudoDetalhePasta').innerHTML = `
+            <h2 style="margin-bottom: 10px;">📁 ${escapeHtml(registrosDaEmpresa[0].empresa)}</h2>
+            <div class="resumo-pasta">
+                <div class="finance-item">Serviços feitos: <strong>${registrosDaEmpresa.length}</strong></div>
+                <div class="finance-item">Total ganho: <span class="val-lucro">R$ ${totalGanho.toFixed(2)}</span></div>
+                <div class="finance-item">Total a receber: <span class="val-pendente">R$ ${totalDeve.toFixed(2)}</span></div>
+            </div>
+            <div id="avisoVencimentoPastaContainer"></div>
+            <div id="pendentesPastaContainer"></div>
+        `;
+
+        const ultimosVencimentos = calcularUltimosVencimentosPorPlaca(dados);
+        const dataHoje = new Date();
+        const hojePadrao = new Date(dataHoje.getFullYear(), dataHoje.getMonth(), dataHoje.getDate());
+        renderizarAvisoVencimentoPasta(registrosDaEmpresa, ultimosVencimentos, hojePadrao);
+        renderizarPendentesPasta(registrosDaEmpresa[0].empresa, registrosDaEmpresa);
+
+        const corpoPasta = document.getElementById('tabelaCorpoPasta');
+        corpoPasta.innerHTML = '';
+        registrosDaEmpresa.forEach(reg => {
+            corpoPasta.appendChild(montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao));
         });
+
+        const tiposContagemPasta = {};
+        registrosDaEmpresa.forEach(r => {
+            const tipo = r.tipoServico || 'Outros';
+            tiposContagemPasta[tipo] = (tiposContagemPasta[tipo] || 0) + 1;
+        });
+        atualizarGraficosPasta(totalGanho, totalDeve, tiposContagemPasta);
+    }
+
+    // Lista, dentro da própria pasta, quais placas daquela empresa estão vencidas/perto de
+    // vencer — reaproveita o mesmo mapa por placa já calculado (calcularUltimosVencimentosPorPlaca),
+    // só filtrando pras placas que pertencem a essa empresa.
+    function renderizarAvisoVencimentoPasta(registrosDaEmpresa, ultimosVencimentos, hojePadrao) {
+        const placasDaEmpresa = new Set(registrosDaEmpresa.map(r => r.placa));
+        const avisos = [];
+
+        const avaliar = (entry, campoData, tipoLabel, placa) => {
+            if (!entry) return;
+            const [ano, mes, dia] = entry[campoData].split('-');
+            const data = new Date(ano, mes - 1, dia);
+            const diff = Math.round((data - hojePadrao) / (1000 * 60 * 60 * 24));
+            if (diff < 0) {
+                avisos.push({ placa, tipo: tipoLabel, texto: `vencido há ${Math.abs(diff)}d`, classe: 'vencido' });
+            } else if (diff <= 5) {
+                avisos.push({ placa, tipo: tipoLabel, texto: diff === 0 ? 'vence hoje' : `vence em ${diff}d`, classe: 'urgente' });
+            }
+        };
+
+        Object.keys(ultimosVencimentos).forEach(placa => {
+            if (!placasDaEmpresa.has(placa)) return;
+            const entry = ultimosVencimentos[placa];
+            if (entry.lub) avaliar(entry.lub, 'proximaLubrificacao', 'Lubrificação', placa);
+            if (entry.oleo) avaliar(entry.oleo, 'proximaTrocaOleo', 'Troca de Óleo', placa);
+        });
+
+        const container = document.getElementById('avisoVencimentoPastaContainer');
+        if (avisos.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = `
+            <div class="aviso-vencimento-pasta">
+                ${avisos.map(a => `<div class="aviso-vencimento-pasta-item ${a.classe}">⚠️ Placa ${escapeHtml(a.placa)} — ${escapeHtml(a.tipo)}: ${a.texto}</div>`).join('')}
+            </div>
+        `;
+    }
+
+    function renderizarPendentesPasta(nomeEmpresa, registrosDaEmpresa) {
+        const pendentes = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pendente');
+        const container = document.getElementById('pendentesPastaContainer');
+
+        if (pendentes.length === 0) {
+            container.innerHTML = '<div class="view-placeholder">Nenhum pendente para essa empresa.</div>';
+            return;
+        }
+
+        const itensHtml = pendentes.map(r => `
+            <div class="pendente-item-pasta">
+                <span>${formatarData(r.dataServico)} — ${escapeHtml(r.tipoServico || 'Serviço')} (placa ${escapeHtml(r.placa)})</span>
+                <strong>R$ ${r.valor}</strong>
+            </div>
+        `).join('');
+
+        container.innerHTML = `
+            <h3 style="margin: 14px 0 6px 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Pendentes</h3>
+            <div class="lista-pendentes-pasta">${itensHtml}</div>
+            <button type="button" class="btn-cobranca-whatsapp" data-empresa="${escapeHtml(nomeEmpresa)}" onclick="window.gerarCobrancaWhatsapp(this.dataset.empresa)">💬 Gerar cobrança (WhatsApp)</button>
+        `;
+    }
+
+    // Função pura (sem DOM) — recebe já a lista de pendentes e devolve o texto da mensagem.
+    // Isso permite testar o formato da mensagem direto no console, sem precisar clicar em nada.
+    function gerarMensagemCobranca(nomeEmpresa, pendentes) {
+        const linhas = pendentes.map(r => `- ${formatarData(r.dataServico)} - ${r.tipoServico || 'Serviço'} (placa ${r.placa}): R$ ${r.valor}`);
+        const total = pendentes.reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
+        return `Olá! Segue o resumo dos serviços pendentes da ${nomeEmpresa}:\n\n${linhas.join('\n')}\n\nTotal pendente: R$ ${total.toFixed(2)}`;
+    }
+
+    window.gerarCobrancaWhatsapp = function(nomeEmpresa) {
+        const dados = window.registrosGlobais || [];
+        const pendentes = dados.filter(r =>
+            (r.empresa || '').trim().toLowerCase() === nomeEmpresa.trim().toLowerCase() &&
+            r.statusPagamento === 'Pendente'
+        );
+        if (pendentes.length === 0) return;
+        const mensagem = gerarMensagemCobranca(nomeEmpresa, pendentes);
+        window.open('https://wa.me/?text=' + encodeURIComponent(mensagem), '_blank');
     }
 
     window.limparFiltroLateral = function() {
         document.getElementById('filterEmpresa').value = '';
         document.getElementById('filterPlaca').value = '';
         document.getElementById('filterStatus').value = 'TODOS';
-        renderizarSidebarPastas();
-        window.filtrarDados();
+        window.renderizarListaPastas();
     }
 
     window.filtrarDados = function() {
-        window.renderizarTabelaCompleta();
+        window.renderizarVisaoGeral();
     }
 
     function formatarData(dataISO) {
@@ -1495,6 +1841,61 @@
         const [ano, mes, dia] = dataISO.split('-');
         return `${dia}/${mes}/${ano}`;
     }
+
+    function atualizarDatalists() {
+        const dados = window.registrosGlobais || [];
+        const empresas = new Set();
+        const placas = new Set();
+        dados.forEach(reg => {
+            if (reg.empresa) empresas.add(reg.empresa.trim());
+            if (reg.placa) placas.add(reg.placa.trim());
+        });
+        document.getElementById('listaEmpresas').innerHTML = Array.from(empresas).sort()
+            .map(e => `<option value="${escapeHtml(e)}"></option>`).join('');
+        document.getElementById('listaPlacas').innerHTML = Array.from(placas).sort()
+            .map(p => `<option value="${escapeHtml(p)}"></option>`).join('');
+    }
+
+    const VIEWS_VALIDAS = ['visao-geral', 'pastas', 'vencimento'];
+
+    function obterViewAtualDoHash() {
+        const hash = (location.hash || '').replace('#', '');
+        if (hash.startsWith('pasta/')) return 'pastas';
+        return VIEWS_VALIDAS.includes(hash) ? hash : 'visao-geral';
+    }
+
+    window.renderizarViewAtual = function() {
+        atualizarDatalists();
+        const viewAtiva = obterViewAtualDoHash();
+
+        document.querySelectorAll('.view-secao').forEach(el => el.classList.remove('ativa'));
+        const elIds = { 'visao-geral': 'viewVisaoGeral', 'pastas': 'viewPastas', 'vencimento': 'viewVencimento' };
+        document.getElementById(elIds[viewAtiva]).classList.add('ativa');
+
+        document.querySelectorAll('.tab-link').forEach(a => {
+            a.classList.toggle('ativo', a.dataset.tab === viewAtiva);
+        });
+
+        if (viewAtiva === 'visao-geral' && typeof window.renderizarVisaoGeral === 'function') {
+            window.renderizarVisaoGeral();
+        }
+        if (viewAtiva === 'pastas') {
+            const hash = (location.hash || '').replace('#', '');
+            if (hash.startsWith('pasta/')) {
+                window.renderizarDetalhePasta(hash.substring('pasta/'.length));
+            } else {
+                document.getElementById('pastasSubviewDetalhe').style.display = 'none';
+                document.getElementById('pastasSubviewLista').style.display = 'block';
+                window.renderizarListaPastas();
+            }
+        }
+        if (viewAtiva === 'vencimento' && typeof window.renderizarVencimento === 'function') {
+            window.renderizarVencimento();
+        }
+    }
+
+    window.addEventListener('hashchange', window.renderizarViewAtual);
+    window.renderizarViewAtual();
 
     // PROTEÇÃO: neutraliza caracteres de HTML em textos digitados pelo usuário (empresa,
     // motorista, descrição, placa, etc.) antes de inserir na tela, para que um texto digitado
