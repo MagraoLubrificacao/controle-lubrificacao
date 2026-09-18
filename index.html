@@ -905,7 +905,37 @@
             color: #fbbf24;
             border: 1px solid rgba(234, 179, 8, 0.3);
         }
-        .lista-pendentes-pasta { margin: 10px 0; font-size: 0.82rem; }
+        .lista-pendentes-pasta { margin: 0; font-size: 0.82rem; }
+        .pendentes-pasta-bloco { margin-bottom: 12px; }
+        .pendentes-pasta-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--info);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+        .pendentes-pasta-seta {
+            transition: transform 0.15s;
+            flex-shrink: 0;
+        }
+        .pendentes-pasta-bloco.aberto .pendentes-pasta-seta {
+            transform: rotate(90deg);
+        }
+        .pendentes-pasta-lista {
+            display: none;
+            max-height: 260px;
+            overflow-y: auto;
+            margin: 8px 0;
+        }
+        .pendentes-pasta-bloco.aberto .pendentes-pasta-lista {
+            display: block;
+        }
         .pendente-item-pasta {
             display: flex;
             flex-wrap: wrap;
@@ -1073,6 +1103,14 @@
                 <div class="chart-card">
                     <h3>🥧 Tipos de Serviço (histórico da pasta)</h3>
                     <div class="chart-wrapper"><canvas id="chartPizzaPasta"></canvas></div>
+                </div>
+            </div>
+            <div class="filtros-pastas-horizontal">
+                <div class="filtros-top-row">
+                    <span style="font-size: 0.85rem; font-weight: bold;">🔍 Buscar no histórico:</span>
+                    <input type="text" id="filterPlacaPasta" class="search-input-compact" placeholder="Buscar Placa..." oninput="window.filtrarHistoricoPasta()">
+                    <input type="text" id="filterMotoristaPasta" class="search-input-compact" placeholder="Buscar Motorista..." oninput="window.filtrarHistoricoPasta()">
+                    <button class="btn-limpar-chip" onclick="document.getElementById('filterPlacaPasta').value=''; document.getElementById('filterMotoristaPasta').value=''; window.filtrarHistoricoPasta();">Limpar Filtros</button>
                 </div>
             </div>
             <div class="table-container">
@@ -1661,6 +1699,28 @@
         return tr;
     }
 
+    window.filtrarHistoricoPasta = function() {
+        const estado = window._pastaDetalheState;
+        if (!estado) return;
+        const filterPlaca = document.getElementById('filterPlacaPasta').value.toLowerCase().trim();
+        const filterMotorista = document.getElementById('filterMotoristaPasta').value.toLowerCase().trim();
+
+        const registrosFiltrados = estado.registrosDaEmpresa.filter(reg =>
+            (reg.placa || '').toLowerCase().includes(filterPlaca) &&
+            (reg.motorista || '').toLowerCase().includes(filterMotorista)
+        );
+
+        const corpoPasta = document.getElementById('tabelaCorpoPasta');
+        corpoPasta.innerHTML = '';
+        if (registrosFiltrados.length === 0) {
+            corpoPasta.innerHTML = '<tr><td colspan="11" style="text-align:center; color: var(--text-muted); font-family: Inter, sans-serif;">Nenhum registro encontrado.</td></tr>';
+            return;
+        }
+        registrosFiltrados.forEach(reg => {
+            corpoPasta.appendChild(montarLinhaHistoricoPasta(reg, estado.ultimosVencimentos, estado.hojePadrao));
+        });
+    }
+
     function atualizarPainelAvisos(vencidos, urgentes) {
         const listaVencidos = document.getElementById('listaVencidos');
         const listaUrgentes = document.getElementById('listaUrgentes');
@@ -1800,6 +1860,8 @@
 
         subviewLista.style.display = 'none';
         subviewDetalhe.style.display = 'block';
+        document.getElementById('filterPlacaPasta').value = '';
+        document.getElementById('filterMotoristaPasta').value = '';
 
         const totalGanho = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pago').reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
         const totalDeve = registrosDaEmpresa.filter(r => r.statusPagamento === 'Pendente').reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
@@ -1821,11 +1883,8 @@
         renderizarAvisoVencimentoPasta(registrosDaEmpresa, ultimosVencimentos, hojePadrao);
         renderizarPendentesPasta(registrosDaEmpresa[0].empresa, registrosDaEmpresa);
 
-        const corpoPasta = document.getElementById('tabelaCorpoPasta');
-        corpoPasta.innerHTML = '';
-        registrosDaEmpresa.forEach(reg => {
-            corpoPasta.appendChild(montarLinhaHistoricoPasta(reg, ultimosVencimentos, hojePadrao));
-        });
+        window._pastaDetalheState = { registrosDaEmpresa, ultimosVencimentos, hojePadrao };
+        window.filtrarHistoricoPasta();
 
         const tiposContagemPasta = {};
         registrosDaEmpresa.forEach(r => {
@@ -1896,6 +1955,7 @@
             return;
         }
 
+        const totalPendente = pendentes.reduce((soma, r) => soma + parseFloat(r.valor || 0), 0);
         const itensHtml = pendentes.map(r => `
             <div class="pendente-item-pasta">
                 <span>${formatarData(r.dataServico)} — ${escapeHtml(r.tipoServico || 'Serviço')} (placa ${escapeHtml(r.placa)})</span>
@@ -1904,9 +1964,16 @@
         `).join('');
 
         container.innerHTML = `
-            <h3 style="margin: 14px 0 6px 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Pendentes</h3>
-            <div class="lista-pendentes-pasta">${itensHtml}</div>
-            <button type="button" class="btn-cobranca-whatsapp" data-empresa="${escapeHtml(nomeEmpresa)}" onclick="window.gerarCobrancaWhatsapp(this.dataset.empresa)">💬 Gerar cobrança (WhatsApp)</button>
+            <div class="pendentes-pasta-bloco">
+                <div class="pendentes-pasta-toggle" onclick="this.parentElement.classList.toggle('aberto')">
+                    <span>📋 ${pendentes.length} pendente${pendentes.length > 1 ? 's' : ''} — Total R$ ${totalPendente.toFixed(2)}</span>
+                    <span class="pendentes-pasta-seta">▶</span>
+                </div>
+                <div class="pendentes-pasta-lista">
+                    <div class="lista-pendentes-pasta">${itensHtml}</div>
+                </div>
+                <button type="button" class="btn-cobranca-whatsapp" data-empresa="${escapeHtml(nomeEmpresa)}" onclick="window.gerarCobrancaWhatsapp(this.dataset.empresa)">💬 Gerar cobrança (WhatsApp)</button>
+            </div>
         `;
     }
 
