@@ -853,6 +853,42 @@
         }
         .resumo-pasta .finance-item { font-size: 0.85rem; }
         .aviso-vencimento-pasta { margin-bottom: 12px; }
+        .aviso-vencimento-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .aviso-vencimento-toggle.vencido {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .aviso-vencimento-toggle.urgente {
+            background: rgba(234, 179, 8, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+        .aviso-vencimento-seta {
+            transition: transform 0.15s;
+            flex-shrink: 0;
+        }
+        .aviso-vencimento-pasta.aberto .aviso-vencimento-seta {
+            transform: rotate(90deg);
+        }
+        .aviso-vencimento-lista {
+            display: none;
+            max-height: 260px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+        .aviso-vencimento-pasta.aberto .aviso-vencimento-lista {
+            display: block;
+        }
         .aviso-vencimento-pasta-item {
             font-size: 0.8rem;
             padding: 6px 10px;
@@ -1830,9 +1866,23 @@
             container.innerHTML = '';
             return;
         }
+
+        const qtdVencidos = avisos.filter(a => a.classe === 'vencido').length;
+        const qtdUrgentes = avisos.filter(a => a.classe === 'urgente').length;
+        const resumoPartes = [];
+        if (qtdVencidos > 0) resumoPartes.push(`${qtdVencidos} vencido${qtdVencidos > 1 ? 's' : ''}`);
+        if (qtdUrgentes > 0) resumoPartes.push(`${qtdUrgentes} vencendo em breve`);
+        const classeResumo = qtdVencidos > 0 ? 'vencido' : 'urgente';
+
         container.innerHTML = `
             <div class="aviso-vencimento-pasta">
-                ${avisos.map(a => `<div class="aviso-vencimento-pasta-item ${a.classe}">⚠️ Placa ${escapeHtml(a.placa)} — ${escapeHtml(a.tipo)}: ${a.texto}</div>`).join('')}
+                <div class="aviso-vencimento-toggle ${classeResumo}" onclick="this.parentElement.classList.toggle('aberto')">
+                    <span>⚠️ ${avisos.length} vencimento${avisos.length > 1 ? 's' : ''} (${resumoPartes.join(', ')})</span>
+                    <span class="aviso-vencimento-seta">▶</span>
+                </div>
+                <div class="aviso-vencimento-lista">
+                    ${avisos.map(a => `<div class="aviso-vencimento-pasta-item ${a.classe}">⚠️ Placa ${escapeHtml(a.placa)} — ${escapeHtml(a.tipo)}: ${a.texto}</div>`).join('')}
+                </div>
             </div>
         `;
     }
