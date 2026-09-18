@@ -1013,6 +1013,14 @@
     </div>
 
     <div id="viewVencimento" class="view-secao">
+        <div class="filtros-pastas-horizontal">
+            <div class="filtros-top-row">
+                <span style="font-size: 0.85rem; font-weight: bold;">🔍 Buscar Vencimento:</span>
+                <input type="text" id="filterEmpresaVencimento" class="search-input-compact" placeholder="Buscar Empresa..." oninput="window.renderizarVencimento()">
+                <input type="text" id="filterPlacaVencimento" class="search-input-compact" placeholder="Buscar Placa..." oninput="window.renderizarVencimento()">
+                <button class="btn-limpar-chip" onclick="document.getElementById('filterEmpresaVencimento').value=''; document.getElementById('filterPlacaVencimento').value=''; window.renderizarVencimento();">Limpar Filtros</button>
+            </div>
+        </div>
         <div class="agenda-alertas">
             <div class="alerta-card vencido" id="cardVencidos">
                 <h3>🔴 Vencidos (Passou do prazo)</h3>
@@ -1646,7 +1654,11 @@
             }
         });
 
-        atualizarPainelAvisos(vencidosList, urgentesList);
+        const filterEmp = document.getElementById('filterEmpresaVencimento').value.toLowerCase().trim();
+        const filterPlac = document.getElementById('filterPlacaVencimento').value.toLowerCase().trim();
+        const bateFiltro = item => item.empresa.toLowerCase().includes(filterEmp) && item.placa.toLowerCase().includes(filterPlac);
+
+        atualizarPainelAvisos(vencidosList.filter(bateFiltro), urgentesList.filter(bateFiltro));
     }
 
     window.abrirPasta = function(nomeEmpresa) {
