@@ -115,6 +115,7 @@
             color: var(--text);
             padding: 12px;
             background-image: radial-gradient(circle at 100% 0%, rgba(245,166,35,0.05), transparent 40%);
+            overflow-x: hidden; /* guarda geral contra qualquer coisa empurrando a tela pro lado no mobile */
         }
 
         .container {
@@ -222,9 +223,12 @@
             padding-bottom: 6px;
             border-bottom: 1px dashed var(--border);
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
+            gap: 6px;
         }
+        .aviso-item span { min-width: 0; overflow-wrap: anywhere; }
 
         .btn-agenda-rapida {
             background-color: var(--primary);
@@ -356,6 +360,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 0; /* sem isso, o <select> forca o item a nao encolher e empurra o layout pro lado no mobile */
         }
 
         .form-group label {
@@ -607,6 +612,19 @@
             .agenda-alertas {
                 grid-template-columns: 1fr;
             }
+            .tab-link {
+                padding: 9px 10px;
+                font-size: 0.74rem;
+            }
+            .btn-flutuante {
+                padding: 12px 16px;
+                font-size: 0.85rem;
+                bottom: 16px;
+                right: 16px;
+            }
+            .modal-box {
+                padding: 14px;
+            }
             .table-container {
                 background: transparent;
                 border: none;
@@ -791,6 +809,10 @@
             transition: border-color 0.15s;
         }
         .pasta-card:hover { border-color: var(--primary); }
+        .pasta-card span:first-child {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
         .pasta-card .status-dot {
             width: 10px;
             height: 10px;
@@ -834,10 +856,13 @@
         .lista-pendentes-pasta { margin: 10px 0; font-size: 0.82rem; }
         .pendente-item-pasta {
             display: flex;
+            flex-wrap: wrap;
             justify-content: space-between;
+            gap: 4px;
             padding: 6px 0;
             border-bottom: 1px dashed var(--border);
         }
+        .pendente-item-pasta span { min-width: 0; overflow-wrap: anywhere; }
         .btn-cobranca-whatsapp {
             background-color: #22c55e;
             margin-top: 8px;
@@ -874,6 +899,7 @@
             max-width: 640px;
             max-height: 90vh;
             overflow-y: auto;
+            overflow-x: hidden; /* guarda extra: nada de dentro do modal empurra a tela pro lado */
         }
         .modal-grupo-titulo {
             font-size: 0.72rem;
