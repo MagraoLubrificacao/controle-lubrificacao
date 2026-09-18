@@ -1888,22 +1888,27 @@
             a.classList.toggle('ativo', a.dataset.tab === viewAtiva);
         });
 
-        if (viewAtiva === 'visao-geral' && typeof window.renderizarVisaoGeral === 'function') {
-            window.renderizarVisaoGeral();
-        }
-        if (viewAtiva === 'pastas') {
-            const hash = (location.hash || '').replace('#', '');
-            if (hash.startsWith('pasta/')) {
-                window.renderizarDetalhePasta(hash.substring('pasta/'.length));
-            } else {
-                document.getElementById('pastasSubviewDetalhe').style.display = 'none';
-                document.getElementById('pastasSubviewLista').style.display = 'block';
-                window.renderizarListaPastas();
+        // BUGFIX: espera o navegador aplicar a troca de display:none -> block antes de
+        // desenhar. Sem isso, ao voltar pra uma aba escondida os graficos (Chart.js) medem
+        // o canvas ainda como escondido e ficam em branco até algo forçar um redesenho.
+        requestAnimationFrame(() => {
+            if (viewAtiva === 'visao-geral' && typeof window.renderizarVisaoGeral === 'function') {
+                window.renderizarVisaoGeral();
             }
-        }
-        if (viewAtiva === 'vencimento' && typeof window.renderizarVencimento === 'function') {
-            window.renderizarVencimento();
-        }
+            if (viewAtiva === 'pastas') {
+                const hash = (location.hash || '').replace('#', '');
+                if (hash.startsWith('pasta/')) {
+                    window.renderizarDetalhePasta(hash.substring('pasta/'.length));
+                } else {
+                    document.getElementById('pastasSubviewDetalhe').style.display = 'none';
+                    document.getElementById('pastasSubviewLista').style.display = 'block';
+                    window.renderizarListaPastas();
+                }
+            }
+            if (viewAtiva === 'vencimento' && typeof window.renderizarVencimento === 'function') {
+                window.renderizarVencimento();
+            }
+        });
     }
 
     window.addEventListener('hashchange', window.renderizarViewAtual);
